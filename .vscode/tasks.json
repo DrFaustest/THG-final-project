@@ -28,7 +28,7 @@
     {
       "label": "run grid experiment",
       "type": "shell",
-      "command": "python -m tsann.experiments.run_grid",
+      "command": "python -m tsann.experiments.run_grid --config configs/smoke_grid.yaml",
       "group": "build",
       "options": {
         "env": {

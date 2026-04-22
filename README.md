@@ -40,7 +40,7 @@ Records use interval validity:
 python -m pip install -e .
 python -m pytest
 python -m tsann.experiments.run_single
-python -m tsann.experiments.run_grid
+python -m tsann.experiments.run_grid --config configs/smoke_grid.yaml
 python -m tsann.experiments.summarize
 python -m tsann.experiments.train_planner
 python -m tsann.experiments.evaluate_planner
@@ -56,4 +56,11 @@ python -m pip install -e ".[hnsw]"
 
 Experiment CSV files are written under `results/csv/`. Each row is per query and includes latency, recall, exact subset size, subset estimate error, chosen planner mode, candidate counts, partitions touched, tombstone counts, deleted/expired counts, compaction counts, rebuild counts, expansion rounds, and a `best_mode` label for planner training. Run-level CSV and JSON summaries are written under `results/reports/`.
 
-`run_grid` includes small smoke workloads for static, append/delete, short-lived expiration, long-lived expiration, and mostly open-ended intervals. It is intentionally small enough for development runs; scale the matrix before using it for paper claims.
+`configs/smoke_grid.yaml` includes small workloads for static, append/delete, short-lived expiration, long-lived expiration, and mostly open-ended intervals. It is intentionally small enough for development runs. `configs/research_grid.example.yaml` shows a larger multi-seed, multi-dimension, multi-scale matrix for paper-oriented runs.
+
+For held-out planner evaluation, reserve one or more seeds during training and evaluate only those seeds:
+
+```powershell
+python -m tsann.experiments.train_planner --exclude-seed 29
+python -m tsann.experiments.evaluate_planner --include-seed 29
+```

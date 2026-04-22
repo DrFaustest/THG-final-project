@@ -182,11 +182,18 @@ class NearestCentroidPlanner(RuleBasedPlanner):
         *,
         config: IndexConfig | None = None,
         algorithm_filter: str = "hybrid",
+        include_seeds: set[str] | None = None,
+        exclude_seeds: set[str] | None = None,
     ) -> "NearestCentroidPlanner":
         rows: list[tuple[str, list[float]]] = []
         with path.open(newline="", encoding="utf-8") as handle:
             for row in csv.DictReader(handle):
                 if row.get("algorithm") != algorithm_filter:
+                    continue
+                seed = row.get("seed", "")
+                if include_seeds is not None and seed not in include_seeds:
+                    continue
+                if exclude_seeds is not None and seed in exclude_seeds:
                     continue
                 label = row.get("best_mode", "")
                 if not label:

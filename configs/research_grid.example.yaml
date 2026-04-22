@@ -1,0 +1,67 @@
+output: results/csv/research_grid.csv
+seeds: [11, 29, 47]
+dimensions: [64, 128, 256]
+dataset_sizes: [100000, 500000, 1000000]
+num_queries: 1000
+k: 10
+
+index_config:
+  partition_exact_threshold: 2000
+  planner_exact_threshold: 5000
+
+regimes:
+  - name: static
+    synthetic:
+      n: 100000
+      d: 64
+      num_clusters: 32
+      drift_strength: 0.1
+      attr_corr: 0.5
+
+  - name: short_lifetime_expire
+    synthetic:
+      n: 100000
+      d: 64
+      num_clusters: 32
+      drift_strength: 0.3
+      attr_corr: 0.5
+      lifetime_min: 1
+      lifetime_max: 14
+    operations:
+      expire_before: 180
+
+  - name: long_lifetime_expire
+    synthetic:
+      n: 100000
+      d: 64
+      num_clusters: 32
+      drift_strength: 0.5
+      attr_corr: 0.5
+      lifetime_min: 120
+      lifetime_max: 365
+    operations:
+      expire_before: 180
+
+  - name: open_ended_heavy
+    synthetic:
+      n: 100000
+      d: 64
+      num_clusters: 32
+      drift_strength: 0.5
+      attr_corr: 0.5
+      lifetime_min: 30
+      lifetime_max: 180
+      open_ended_fraction: 0.7
+    operations:
+      expire_before: 180
+
+  - name: append_delete
+    synthetic:
+      n: 100000
+      d: 64
+      num_clusters: 32
+      drift_strength: 0.3
+      attr_corr: 0.5
+    operations:
+      append_count: 10000
+      delete_fraction: 0.1
