@@ -2,7 +2,7 @@
 %%% Do NOT edit. File created by BibTeX with style
 %%% ACM-Reference-Format-Journals [18-Jan-2012].
 
-\begin{thebibliography}{11}
+\begin{thebibliography}{12}
 
 %%% ====================================================================
 %%% NOTE TO THE USER: you can override these defaults by providing
@@ -80,6 +80,17 @@
 \newblock \bibinfo{journal}{\emph{Proceedings of the VLDB Endowment}}
   \bibinfo{volume}{12}, \bibinfo{number}{5} (\bibinfo{year}{2019}),
   \bibinfo{pages}{461--474}.
+\newblock
+
+
+\bibitem[Gao and Long(2023)]%
+        {gao2023}
+\bibfield{author}{\bibinfo{person}{Jianyang Gao} {and} \bibinfo{person}{Cheng
+  Long}.} \bibinfo{year}{2023}\natexlab{}.
+\newblock \showarticletitle{High-Dimensional Approximate Nearest Neighbor
+  Search: with Reliable and Efficient Distance Comparison Operations}.
+\newblock \bibinfo{journal}{\emph{Proceedings of the 2023 International
+  Conference on Management of Data}} (\bibinfo{year}{2023}).
 \newblock
 
 

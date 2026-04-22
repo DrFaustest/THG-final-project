@@ -164,7 +164,10 @@ q = (x, [T_s, T_e], [P_s, P_e], c, k),
 \]
 where $x$ is the query vector, $[T_s, T_e]$ is the requested time window, $[P_s, P_e]$ is the requested scalar range, $c$ is an optional category restriction, and $k$ is the number of neighbors requested. A record is eligible when its validity interval intersects the query window and its metadata satisfy the scalar and categorical constraints. Defining the eligible subset as
 \[
-S_q = \{r_i : [t_i^{start}, t_i^{end}] \cap [T_s, T_e] \neq \emptyset,\; p_i \in [P_s,P_e],\; c_i \text{ matches if specified}\},
+\begin{aligned}
+S_q = \{r_i :\;& [t_i^{start}, t_i^{end}] \cap [T_s, T_e] \neq \emptyset,\\
+&p_i \in [P_s,P_e],\; c_i \text{ matches if specified}\},
+\end{aligned}
 \]
 the retrieval goal is to return the top-$k$ nearest records in $S_q$ under Euclidean distance.
 
@@ -176,6 +179,18 @@ This report evaluates three concrete research questions.
 \end{description}
 
 The working hypotheses are correspondingly straightforward: global post-filtering should lose efficiency and sometimes recall under restrictive subsets; partition-first routing should dominate as a fixed strategy when partitions align with query constraints; and a hybrid planner should improve over any single weak baseline, but its quality will depend on the accuracy of subset estimation and strategy selection.
+
+\subsection{Why subset constraints change the cost model}
+
+The temporal-subset version of nearest-neighbor search is different from unconstrained ANN because the system has two notions of closeness that must be satisfied at the same time. A record can be close in vector space but invalid under the temporal or scalar predicate, or it can be valid under the predicate but far away from the query vector. Ordinary ANN indexes are optimized primarily for the first condition. They are designed to find vector-near candidates quickly, usually without awareness of whether those candidates are eligible for a particular query. Temporal subset search requires both conditions, so a candidate that fails the filter represents wasted index traversal, wasted distance computation, and wasted candidate budget.
+
+This is easiest to see through a simple candidate-budget view. Let a global ANN method retrieve $m$ candidates before filtering. If the selectivity of the predicate is $\sigma_q = |S_q|/n$, then an independence assumption would suggest only about $m\sigma_q$ candidates survive filtering. Real data are rarely independent in this way, but the approximation captures the risk. If the query asks for $k=10$ results and $\sigma_q$ is small, the global method may need a much larger candidate budget than it would need for unconstrained ANN. If the implementation caps that budget for latency reasons, recall falls. If it expands the budget aggressively, latency rises. The global method is therefore pushed toward an uncomfortable choice between missing valid neighbors and spending more work on invalid candidates.
+
+Partition-first routing changes the order of operations. Instead of first asking which records are globally close and only later asking which of those records are eligible, the partitioned method first narrows the search to cells that can intersect the query's time and price predicates. The candidate budget is then spent inside a smaller and more relevant region of the collection. This does not make high-dimensional search easy, but it does make the vector search effort better aligned with the actual query semantics. The empirical question is whether that alignment is strong enough to offset the overhead of maintaining partitions and local indexes.
+
+The dynamic nature of the setting adds another cost. A static partitioned design can be tuned once, but temporal validity means records expire, become inactive, or remain open-ended. As a result, the system must manage both retrieval quality and index freshness. Logical deletion and compaction are not secondary implementation details; they are part of the indexing problem. A method that is excellent for a static benchmark may perform poorly if it requires frequent full rebuilds under expiration-heavy workloads. This is why the prototype measures rebuilds, cell rebuilds, compaction counts, deleted counts, and expired counts alongside recall and latency.
+
+These observations motivate the hybrid planner. A global strategy may still be reasonable for broad queries where most records are valid, while exact scanning may be reasonable for tiny subsets where index overhead is larger than the scan itself. Partition-first ANN should be strongest when the subset is selective but not so small that exact scanning is trivial. The planner's role is to estimate which regime a query falls into. The project therefore treats temporal subset ANN as a strategy-selection problem as much as a nearest-neighbor problem.
 
 \section{Prototype Design}
 
@@ -194,6 +209,34 @@ The partitioned method routes records by time and price buckets and maintains lo
 
 \paragraph{Hybrid planner.}
 The hybrid method estimates subset size from cell metadata and selects among exact search, partition-first ANN, and global ANN plus post-filtering. The current planner is rule-based rather than learned, but it logs its own feature values and outcomes so that planner quality can be analyzed directly.
+
+\subsection{Planner features and routing rationale}
+
+The hybrid planner is intentionally simple, but its feature set is designed to capture the main signals that determine whether a query should be scanned exactly, routed through partitions, or sent through the global ANN baseline. The most important feature is the estimated subset size. Very small subsets favor exact search because there is little reason to pay index overhead when a short scan can compute the exact answer. Medium-sized selective subsets favor partition-first ANN because the query can avoid most invalid records while still using local ANN behavior. Very broad subsets can make global search more plausible, although the experiments show that this case is still difficult when the candidate budget is too small.
+
+The planner also records the number of candidate cells, the average estimated cell size, the query-window width, the scalar-range width, whether a category filter is present, active-record counts, tombstone counts, tombstone ratio, open-ended interval fraction, and a fragmentation score. These features are not arbitrary. They correspond to different sources of retrieval cost. Large query windows and broad price ranges increase subset size. Category predicates can make otherwise broad queries selective. Tombstone ratios and fragmentation influence whether local structures are clean enough to query efficiently or whether compaction pressure is accumulating. Open-ended intervals matter because they create long-lived records that intersect many time windows and can reduce the selectivity of temporal routing.
+
+\begin{table}[t]
+\caption{Planner features logged by the prototype and why they matter.}
+\label{tab:plannerfeatures}
+\centering
+\small
+\begin{tabular}{p{2.6cm}p{4.5cm}}
+\toprule
+Feature group & Purpose in planner analysis \\
+\midrule
+Subset-size estimate & Approximates how much exact work remains after applying temporal and metadata filters. \\
+Cell count and average cell size & Indicates whether partition routing will touch a few focused cells or many broad cells. \\
+Query-window and price-range width & Captures predicate breadth before candidate generation. \\
+Category-present flag & Identifies queries with an additional discrete selectivity signal. \\
+Active and tombstoned records & Measures index freshness and the amount of inactive data still visible to structures. \\
+Open-ended fraction & Captures workloads where many intervals remain valid for a long period. \\
+Fragmentation score & Represents how scattered the eligible subset is across routed cells. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+This feature design is useful even though the reported planner is rule-based. Because the trace records both the planner's chosen mode and the empirically best mode for each query, the same dataset can be reused for learned planner experiments. In that sense, the rule-based planner is not only a strategy in the evaluation; it is also a data-collection mechanism. Its mistakes identify which feature combinations are not handled well by simple thresholds. The observed low match rates are therefore informative rather than merely disappointing: they show where a future learned planner has room to improve.
 
 \subsection{Dynamic maintenance}
 
@@ -218,6 +261,27 @@ The experiments use synthetic vector data with controllable cluster structure, t
 \end{enumerate}
 
 Each workload is evaluated in 32 and 64 dimensions. The reported summary statistics aggregate repeated runs over multiple seeds. This setup is intentionally modest enough to keep the artifact reproducible while still stressing the planner and maintenance behavior across materially different temporal regimes.
+
+\begin{table}[t]
+\caption{Purpose of the workload regimes used in the evaluation.}
+\label{tab:workloads}
+\centering
+\small
+\begin{tabular}{p{2.4cm}p{4.7cm}}
+\toprule
+Workload & Evaluation purpose \\
+\midrule
+Static & Separates pure subset-routing behavior from update and expiration costs. \\
+Short-life expire & Tests frequent expiration, high turnover, and compaction pressure. \\
+Long-life expire & Tests cases where most records remain active but expiration still accumulates. \\
+Open-ended heavy & Tests intervals that remain valid indefinitely and weaken temporal selectivity. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The four workloads are meant to expose different failure modes rather than simply vary one parameter. The static workload is a control condition. If a method performs poorly there, the cause is not dynamic maintenance but the basic interaction between ANN and subset filtering. The short-life expiration workload is a stress test for maintenance. Many records become invalid quickly, so tombstones and cell rebuilds matter more. The long-life expiration workload is closer to a slowly changing catalog: most records remain available, but the system still needs to handle stale records over time. The open-ended-heavy workload represents applications where many records remain valid indefinitely, such as persistent listings, long-running user profiles, or documents whose availability does not expire. In that setting, temporal filters may be less selective, and the planner must rely more on scalar and category constraints.
+
+Using both 32- and 64-dimensional vectors provides a small but useful dimensionality check. The goal is not to exhaustively benchmark dimensional scaling, but to ensure that the observed temporal-subset behavior is not tied to a single embedding dimension. The results show the same broad pattern in both dimensions: global post-filtering struggles, partition-first routing remains strong, and the hybrid planner improves over the global baseline but does not consistently select the best mode. That consistency makes the main conclusion stronger than it would be under a single-dimensional smoke test.
 
 \subsection{Metrics}
 
@@ -318,6 +382,30 @@ Second, partition-first routing is highly effective in the present prototype. Th
 Third, hybridization is promising but incomplete. The hybrid planner clearly improves over the global baseline and often preserves exact-level recall. However, planner match rates and regret show that selecting the right mode remains difficult. The current system therefore supports a nuanced conclusion: \emph{the adaptive formulation is justified, but the planner itself remains the main research challenge.}
 
 A useful way to interpret the fixed-strategy results is through candidate waste. Global ANN retrieval spends effort to find globally similar vectors whether or not they satisfy the temporal and scalar filters. In restrictive workloads, many of those candidates are simply unusable. Partition-first routing reduces that waste by making subset membership part of the routing decision. The prototype results suggest that this structural alignment matters more than squeezing small efficiency gains out of any single ANN kernel.
+
+\subsection{Answers to the research questions}
+
+For RQ1, the answer is no: global ANN followed by exact filtering does not remain competitive once subset constraints become central to the query. The global baseline is attractive because it is simple and because it resembles the architecture of many vector search systems: build one index over the collection, retrieve candidates, and then apply application-level predicates. The results show why that architecture is fragile. The global method often spends its candidate budget on records that are close in vector space but invalid under the query. Its valid-result rate remains high because the final filtering step removes invalid records, but its recall drops because too few valid nearest neighbors survive the candidate-generation stage. This is a different failure from returning wrong records; it is a failure to expose enough eligible candidates to the final ranking step.
+
+For RQ2, the answer is much more favorable to partition-first routing. Partition-first ANN is the strongest fixed strategy in the current artifact, producing exact-level Recall@10 in all reported workloads and the lowest median latency among the fixed methods. This does not mean partition-first routing is universally optimal, but it does show that making subset constraints part of the index-routing step is a powerful design choice. The result is especially important because the partitioned method is not merely improving recall at the cost of much higher latency. It improves both recall and median latency in this experiment because it avoids much of the candidate waste that hurts global post-filtering.
+
+For RQ3, the answer is mixed. The hybrid planner improves substantially over the global baseline, and in several workloads it preserves exact-level or near-exact recall. However, the planner's match rate shows that the current rule-based decision policy is not yet reliable enough to be considered a final solution. This distinction matters. A hybrid architecture can be promising even when a particular planner is weak. The prototype demonstrates that the necessary signals are measurable, that planner regret can be computed at query granularity, and that a trace can be produced for training or evaluating future planners. The main unresolved problem is not whether strategy selection is useful, but how to choose the strategy with enough consistency to avoid latency regret.
+
+\subsection{Practical implications}
+
+The main practical implication is that vector search systems with strong metadata or temporal predicates should be cautious about treating filtering as a final post-processing step. Post-filtering is easy to implement, but it hides a substantial candidate-generation problem. If candidate generation is oblivious to eligibility, the system may need to over-fetch aggressively to recover recall. Over-fetching then increases distance computations and latency, especially in graph-based or quantization-based systems where candidate evaluation is already a major cost.
+
+A second implication is that exact search should not be dismissed automatically. In ordinary high-dimensional ANN discussions, exact scanning is often presented only as a slow baseline. In subset search, exact scanning can be competitive for very small eligible sets because the predicate has already reduced the work. This is one reason a planner is useful. A system that always routes to ANN may do extra work on tiny subsets; a system that always scans may become too slow on larger subsets; and a system that always uses a global index may waste budget on invalid candidates. The best choice changes with query selectivity.
+
+A third implication is that maintenance policy and query policy should be evaluated together. Partition-first routing is valuable partly because it aligns with the query predicates, but the same partitioning creates maintenance obligations. Cells may need local rebuilds, tombstones must be tracked, and open-ended records may intersect many future windows. The prototype results suggest that these costs are manageable at the tested scale, but the maintenance metrics are not incidental. They should be part of any serious comparison of temporal subset ANN designs.
+
+\subsection{What should be added next}
+
+The most valuable future addition to the paper's experimental story would be a learned planner comparison. The artifact already records the correct ingredients: query features, chosen modes, exact subset sizes, best empirical modes, latency regret, and recall gaps. A learned planner could be trained on held-out seeds and compared against the rule-based planner using the same trace format. This would directly address the current planner weakness without changing the rest of the benchmark harness.
+
+A second useful addition would be a broader scale study. The current report uses $n=5000$ to keep experiments reproducible and fast enough for repeated development, but larger collections would clarify how maintenance costs and candidate waste grow. In particular, it would be useful to vary $n$, vector dimension, temporal selectivity, and bucket granularity independently. That would reveal whether partition-first routing remains dominant as local cells grow larger and whether global post-filtering becomes even less attractive at larger scale.
+
+A third useful addition would be a production-style workload or trace. Synthetic data is appropriate for controlled experiments, but real systems often have skewed categories, correlated metadata, bursts of insertions and expirations, and nonuniform query windows. Those properties may change planner behavior. A future version of this study could evaluate whether the same conclusions hold for document retrieval, listing search, recommendation candidates, or event validity windows. That would make the contribution more persuasive to system builders who need to choose an architecture for filtered vector search.
 
 \section{Threats to Validity and Future Work}
 

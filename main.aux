@@ -9,50 +9,97 @@
 \citation{jegou2011}
 \citation{fu2019,malkov2020}
 \citation{johnson2021}
+\citation{gao2023}
 \citation{bentley1975}
 \citation{guttman1984}
 \@writefile{toc}{\contentsline {section}{Abstract}{1}{section*.1}\protected@file@percent }
 \@writefile{toc}{\contentsline {section}{\numberline {1}Introduction}{1}{section.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {2}Background and Related Work}{1}{section.2}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {2.1}Exact multidimensional indexing}{1}{subsection.2.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {2}Literature Review and Related Work}{1}{section.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.1}From exact indexing to approximation}{1}{subsection.2.1}\protected@file@percent }
 \citation{indyk1998,gionis1999,andoni2018}
 \citation{indyk1998}
 \citation{gionis1999}
+\citation{andoni2018}
+\citation{muja2014,fu2019,malkov2020,johnson2021}
+\citation{indyk1998}
+\citation{gionis1999}
+\citation{muja2014,jegou2011,fu2019}
+\citation{muja2014}
+\citation{beygelzimer2006}
 \citation{muja2014}
 \citation{beygelzimer2006}
 \citation{jegou2011}
-\citation{fu2019,malkov2020}
+\citation{jegou2011,johnson2021}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.2}The curse of dimensionality as the turning point}{2}{subsection.2.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.3}Hash-based ANN and the first major approximation framework}{2}{subsection.2.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.4}Tree-based practical ANN and intrinsic-dimension approaches}{2}{subsection.2.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.5}Compression and quantization as indexing strategies}{2}{subsection.2.5}\protected@file@percent }
+\citation{fu2019}
+\citation{fu2019}
+\citation{malkov2020}
 \citation{johnson2021}
-\@writefile{toc}{\contentsline {subsection}{\numberline {2.2}Approximate nearest-neighbor search}{2}{subsection.2.2}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {2.3}Why temporal subset search is a distinct problem}{2}{subsection.2.3}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {3}Problem Formulation}{2}{section.3}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {4}Prototype Design}{2}{section.4}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.1}Algorithms}{2}{subsection.4.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Exact filtered oracle.}{2}{section*.4}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Global ANN then filter.}{2}{section*.5}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Partition-first ANN.}{2}{section*.6}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Hybrid planner.}{2}{section*.7}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.2}Dynamic maintenance}{2}{subsection.4.2}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.3}Implementation artifact}{2}{subsection.4.3}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {5}Experimental Methodology}{3}{section.5}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {5.1}Synthetic data and workloads}{3}{subsection.5.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {5.2}Metrics}{3}{subsection.5.2}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {6}Results}{3}{section.6}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {6.1}Fixed strategy comparison}{3}{subsection.6.1}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces Mean Recall@10 averaged over 32- and 64-dimensional runs at $n=5000$. Global ANN plus post-filtering degrades substantially under subset constraints, while partition-first ANN remains exact in the tested workloads.}}{3}{figure.caption.8}\protected@file@percent }
+\citation{gao2023}
+\citation{bentley1975,guttman1984,indyk1998}
+\citation{andoni2018,muja2014,jegou2011,fu2019,malkov2020,johnson2021}
+\citation{bentley1975}
+\citation{guttman1984}
+\citation{indyk1998,gionis1999}
+\citation{muja2014}
+\citation{beygelzimer2006}
+\citation{jegou2011}
+\citation{fu2019}
+\citation{malkov2020}
+\citation{johnson2021}
+\citation{gao2023}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.6}Graph-based ANN and the dominance of navigational search}{3}{subsection.2.6}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.7}Hardware-aware ANN and the rise of systems concerns}{3}{subsection.2.7}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.8}Synthesis: what the literature implies for temporal subset ANN}{3}{subsection.2.8}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {3}Problem Formulation and Research Questions}{3}{section.3}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces High-level comparison of ANN families discussed in the literature review.}}{4}{table.caption.4}\protected@file@percent }
 \providecommand*\caption@xref[2]{\@setref\relax\@undefined{#1}}
-\newlabel{fig:recall}{{1}{3}{Mean Recall@10 averaged over 32- and 64-dimensional runs at $n=5000$. Global ANN plus post-filtering degrades substantially under subset constraints, while partition-first ANN remains exact in the tested workloads}{figure.caption.8}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Mean p50 latency averaged over 32- and 64-dimensional runs at $n=5000$. Partition-first ANN is the fastest fixed strategy in the current prototype.}}{3}{figure.caption.9}\protected@file@percent }
-\newlabel{fig:latency}{{2}{3}{Mean p50 latency averaged over 32- and 64-dimensional runs at $n=5000$. Partition-first ANN is the fastest fixed strategy in the current prototype}{figure.caption.9}{}}
+\newlabel{tab:litfamilies}{{1}{4}{High-level comparison of ANN families discussed in the literature review}{table.caption.4}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.1}Why subset constraints change the cost model}{4}{subsection.3.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {4}Prototype Design}{5}{section.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.1}Algorithms}{5}{subsection.4.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Exact filtered oracle.}{5}{section*.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Global ANN then filter.}{5}{section*.6}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Partition-first ANN.}{5}{section*.7}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Hybrid planner.}{5}{section*.8}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.2}Planner features and routing rationale}{5}{subsection.4.2}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces Planner features logged by the prototype and why they matter.}}{5}{table.caption.9}\protected@file@percent }
+\newlabel{tab:plannerfeatures}{{2}{5}{Planner features logged by the prototype and why they matter}{table.caption.9}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.3}Dynamic maintenance}{5}{subsection.4.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.4}Implementation artifact and reproducibility}{5}{subsection.4.4}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {3}{\ignorespaces Purpose of the workload regimes used in the evaluation.}}{6}{table.caption.10}\protected@file@percent }
+\newlabel{tab:workloads}{{3}{6}{Purpose of the workload regimes used in the evaluation}{table.caption.10}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {5}Experimental Methodology}{6}{section.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.1}Synthetic data and workloads}{6}{subsection.5.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.2}Metrics}{6}{subsection.5.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.3}Evaluation logic}{6}{subsection.5.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {6}Results}{6}{section.6}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.1}Fixed strategy comparison}{6}{subsection.6.1}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces Mean Recall@10 averaged over 32- and 64-dimensional runs at $n=5000$. Global ANN plus post-filtering degrades substantially under subset constraints, while partition-first ANN remains exact in the tested workloads.}}{7}{figure.caption.11}\protected@file@percent }
+\newlabel{fig:recall}{{1}{7}{Mean Recall@10 averaged over 32- and 64-dimensional runs at $n=5000$. Global ANN plus post-filtering degrades substantially under subset constraints, while partition-first ANN remains exact in the tested workloads}{figure.caption.11}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Mean p50 latency averaged over 32- and 64-dimensional runs at $n=5000$. Partition-first ANN is the fastest fixed strategy in the current prototype.}}{7}{figure.caption.12}\protected@file@percent }
+\newlabel{fig:latency}{{2}{7}{Mean p50 latency averaged over 32- and 64-dimensional runs at $n=5000$. Partition-first ANN is the fastest fixed strategy in the current prototype}{figure.caption.12}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.2}Estimator behavior}{7}{subsection.6.2}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Mean subset-estimate error by workload. Estimation quality is now relatively stable, which shifts attention to planner quality rather than estimator failure.}}{7}{figure.caption.14}\protected@file@percent }
+\newlabel{fig:estimator}{{3}{7}{Mean subset-estimate error by workload. Estimation quality is now relatively stable, which shifts attention to planner quality rather than estimator failure}{figure.caption.14}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces Hybrid planner quality by workload. Match rate remains modest and latency regret remains substantial, showing that planner selection is still the main unresolved problem.}}{7}{figure.caption.15}\protected@file@percent }
+\newlabel{fig:planner}{{4}{7}{Hybrid planner quality by workload. Match rate remains modest and latency regret remains substantial, showing that planner selection is still the main unresolved problem}{figure.caption.15}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.3}Hybrid planner behavior}{7}{subsection.6.3}\protected@file@percent }
 \citation{muja2014,malkov2020,johnson2021}
-\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Mean subset-estimate error by workload. Estimation quality is now relatively stable, which shifts attention to planner quality rather than estimator failure.}}{4}{figure.caption.11}\protected@file@percent }
-\newlabel{fig:estimator}{{3}{4}{Mean subset-estimate error by workload. Estimation quality is now relatively stable, which shifts attention to planner quality rather than estimator failure}{figure.caption.11}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {6.2}Estimator behavior}{4}{subsection.6.2}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {6.3}Hybrid planner behavior}{4}{subsection.6.3}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces Hybrid planner quality by workload. Match rate remains modest and latency regret remains substantial, showing that planner selection is still the main unresolved problem.}}{4}{figure.caption.12}\protected@file@percent }
-\newlabel{fig:planner}{{4}{4}{Hybrid planner quality by workload. Match rate remains modest and latency regret remains substantial, showing that planner selection is still the main unresolved problem}{figure.caption.12}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {6.4}Maintenance costs}{4}{subsection.6.4}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {7}Discussion}{4}{section.7}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {4}{\ignorespaces Average Recall@10 and p50 latency (ms) across 32- and 64-dimensional runs at $n=5000$.}}{8}{table.caption.13}\protected@file@percent }
+\newlabel{tab:avgresults}{{4}{8}{Average Recall@10 and p50 latency (ms) across 32- and 64-dimensional runs at $n=5000$}{table.caption.13}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {5}{\ignorespaces Maintenance-oriented counters by workload. Expiration-heavy regimes increase compaction and rebuild pressure, but the partition-first method still preserves the best retrieval behavior in the current prototype.}}{8}{figure.caption.16}\protected@file@percent }
+\newlabel{fig:maintenance}{{5}{8}{Maintenance-oriented counters by workload. Expiration-heavy regimes increase compaction and rebuild pressure, but the partition-first method still preserves the best retrieval behavior in the current prototype}{figure.caption.16}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.4}Maintenance costs}{8}{subsection.6.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {7}Discussion}{8}{section.7}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.1}Answers to the research questions}{8}{subsection.7.1}\protected@file@percent }
+\citation{gao2023}
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.2}Practical implications}{9}{subsection.7.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.3}What should be added next}{9}{subsection.7.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {8}Threats to Validity and Future Work}{9}{section.8}\protected@file@percent }
 \citation{bentley1975,guttman1984,indyk1998,gionis1999,muja2014,jegou2011,fu2019,malkov2020,johnson2021}
 \bibstyle{ACM-Reference-Format}
 \bibdata{references}
@@ -60,13 +107,14 @@
 \bibcite{bentley1975}{{2}{1975}{{Bentley}}{{}}}
 \bibcite{beygelzimer2006}{{3}{2006}{{Beygelzimer et~al\mbox  {.}}}{{}}}
 \bibcite{fu2019}{{4}{2019}{{Fu et~al\mbox  {.}}}{{}}}
-\bibcite{gionis1999}{{5}{1999}{{Gionis et~al\mbox  {.}}}{{}}}
-\bibcite{guttman1984}{{6}{1984}{{Guttman}}{{}}}
-\bibcite{indyk1998}{{7}{1998}{{Indyk and Motwani}}{{}}}
-\bibcite{jegou2011}{{8}{2011}{{J{\'e}gou et~al\mbox  {.}}}{{}}}
-\bibcite{johnson2021}{{9}{2021}{{Johnson et~al\mbox  {.}}}{{}}}
-\bibcite{malkov2020}{{10}{2020}{{Malkov and Yashunin}}{{}}}
-\bibcite{muja2014}{{11}{2014}{{Muja and Lowe}}{{}}}
+\bibcite{gao2023}{{5}{2023}{{Gao and Long}}{{}}}
+\bibcite{gionis1999}{{6}{1999}{{Gionis et~al\mbox  {.}}}{{}}}
+\bibcite{guttman1984}{{7}{1984}{{Guttman}}{{}}}
+\bibcite{indyk1998}{{8}{1998}{{Indyk and Motwani}}{{}}}
+\bibcite{jegou2011}{{9}{2011}{{J{\'e}gou et~al\mbox  {.}}}{{}}}
+\bibcite{johnson2021}{{10}{2021}{{Johnson et~al\mbox  {.}}}{{}}}
+\bibcite{malkov2020}{{11}{2020}{{Malkov and Yashunin}}{{}}}
+\bibcite{muja2014}{{12}{2014}{{Muja and Lowe}}{{}}}
 \newlabel{tocindent-1}{0pt}
 \newlabel{tocindent0}{0pt}
 \newlabel{tocindent1}{4.185pt}
@@ -74,10 +122,7 @@
 \newlabel{tocindent3}{0pt}
 \newlabel{tocindent4}{0pt}
 \newlabel{tocindent5}{0pt}
-\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Average Recall@10 and p50 latency (ms) across 32- and 64-dimensional runs at $n=5000$.}}{5}{table.caption.10}\protected@file@percent }
-\newlabel{tab:avgresults}{{1}{5}{Average Recall@10 and p50 latency (ms) across 32- and 64-dimensional runs at $n=5000$}{table.caption.10}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {8}Limitations and Future Work}{5}{section.8}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {9}Conclusion}{5}{section.9}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{References}{5}{section*.14}\protected@file@percent }
-\newlabel{TotPages}{{5}{5}{}{page.5}{}}
-\gdef \@abspage@last{5}
+\@writefile{toc}{\contentsline {section}{\numberline {9}Conclusion}{10}{section.9}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{References}{10}{section*.18}\protected@file@percent }
+\newlabel{TotPages}{{10}{10}{}{page.10}{}}
+\gdef \@abspage@last{10}
