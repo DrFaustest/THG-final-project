@@ -1,0 +1,26 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Run single experiment",
+      "type": "python",
+      "request": "launch",
+      "module": "tsann.experiments.run_single",
+      "env": {
+        "PYTHONPATH": "src"
+      },
+      "justMyCode": true
+    },
+    {
+      "name": "Pytest current file",
+      "type": "python",
+      "request": "launch",
+      "module": "pytest",
+      "args": ["${file}"],
+      "env": {
+        "PYTHONPATH": "src"
+      },
+      "justMyCode": false
+    }
+  ]
+}

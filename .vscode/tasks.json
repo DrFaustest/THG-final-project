@@ -1,0 +1,53 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "pytest",
+      "type": "shell",
+      "command": "python -m pytest -q",
+      "group": "test",
+      "options": {
+        "env": {
+          "PYTHONPATH": "src"
+        }
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "run single experiment",
+      "type": "shell",
+      "command": "python -m tsann.experiments.run_single",
+      "group": "build",
+      "options": {
+        "env": {
+          "PYTHONPATH": "src"
+        }
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "run grid experiment",
+      "type": "shell",
+      "command": "python -m tsann.experiments.run_grid",
+      "group": "build",
+      "options": {
+        "env": {
+          "PYTHONPATH": "src"
+        }
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "summarize results",
+      "type": "shell",
+      "command": "python -m tsann.experiments.summarize",
+      "group": "build",
+      "options": {
+        "env": {
+          "PYTHONPATH": "src"
+        }
+      },
+      "problemMatcher": []
+    }
+  ]
+}
