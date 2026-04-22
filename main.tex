@@ -1,4 +1,3 @@
-
 \documentclass[sigconf,nonacm]{acmart}
 
 \usepackage[T1]{fontenc}
@@ -27,6 +26,27 @@
 }
 \email{ScottFaust@UNOmaha.com}
 
+\newcommand{\reportfigure}[3]{%
+\begin{figure}[t]
+    \centering
+    \IfFileExists{#1}{%
+        \includegraphics[width=\linewidth]{#1}%
+    }{%
+        \fbox{%
+            \parbox{0.94\linewidth}{%
+                \centering
+                \textbf{Figure file not found.}\\[2pt]
+                Expected: \texttt{#1}\\[2pt]
+                Generate the figure with the experiment pipeline and\\
+                \texttt{python -m tsann.experiments.plot\_results}.%
+            }%
+        }%
+    }%
+    \caption{#2}
+    \label{#3}
+\end{figure}%
+}
+
 \begin{document}
 
 \begin{abstract}
@@ -43,7 +63,7 @@ Building on the literature on k-d trees, R-trees, locality-sensitive hashing, pr
 
 High-dimensional nearest-neighbor and similarity search is a core problem in algorithms, data structures, and modern intelligent systems. It appears in image retrieval, document search, recommender systems, embedding databases, and many forms of machine learning inference. Classical multidimensional indexes such as the k-d tree and the R-tree established the foundations of geometric search by organizing data so that large portions of the search space could be excluded without direct comparison \cite{bentley1975,guttman1984}. As dimensions rise, however, the geometric selectivity that makes exact pruning effective weakens dramatically, and much of the literature shifts toward approximate nearest-neighbor methods that accept bounded error in exchange for practical speed \cite{indyk1998,gionis1999,andoni2018}.
 
-The literature on ANN is now rich and varied. Hash-based methods use locality-sensitive hashing to preserve similarity probabilistically \cite{indyk1998,gionis1999}. Tree-based practical systems such as FLANN use randomized forests and clustered trees, and intrinsic-dimension approaches such as cover trees seek structure beyond the raw ambient dimension \cite{muja2014,beygelzimer2006}. Compression-based methods such as product quantization reduce memory and comparison costs \cite{jegou2011}. Graph-based systems such as NSG and HNSW make search itself a traversal problem over approximate neighborhood graphs \cite{fu2019,malkov2020}. GPU-oriented systems further show that large-scale performance depends not only on index structure but on hardware-aware kernels and memory behavior \cite{johnson2021}.
+The literature on ANN is now rich and varied. Hash-based methods use locality-sensitive hashing to preserve similarity probabilistically \cite{indyk1998,gionis1999}. Tree-based practical systems such as FLANN use randomized forests and clustered trees, and intrinsic-dimension approaches such as cover trees seek structure beyond the raw ambient dimension \cite{muja2014,beygelzimer2006}. Compression-based methods such as product quantization reduce memory and comparison costs \cite{jegou2011}. Graph-based systems such as NSG and HNSW make search itself a traversal problem over approximate neighborhood graphs \cite{fu2019,malkov2020}. GPU-oriented systems further show that large-scale performance depends not only on index structure but also on hardware-aware kernels and memory behavior \cite{johnson2021}. Recent work on efficient distance comparison operations suggests that even within established ANN families, the basic cost model of candidate evaluation remains an active systems problem \cite{gao2023}.
 
 This report investigates a narrower but practically important variant of the problem: nearest-neighbor search over a \emph{temporal subset}. In this setting, the query does not search the entire vector collection. Instead, it searches only records whose validity interval intersects a requested time window and whose metadata satisfy a scalar constraint. This changes the design problem substantially. A global ANN index can still provide candidate neighbors, but many of those candidates may be invalid under the temporal filter. Conversely, a partitioned search structure can route queries more precisely, but may pay maintenance cost when data expire or become inactive.
 
@@ -55,7 +75,7 @@ How should ANN search be organized when nearest-neighbor queries must be answere
 
 The report contributes three things. First, it synthesizes the broader ANN literature into a framework that motivates temporal subset search as a natural next problem rather than as a separate topic. Second, it presents a prototype system with four strategies: exact filtered search, global ANN plus post-filtering, partition-first ANN, and a hybrid planner. Third, it evaluates those strategies under multiple temporal workloads and shows that partition-first routing is the strongest fixed method in the current prototype, while adaptive hybrid planning remains promising but incomplete.
 
-\section{Background and Related Work}
+\section{Literature Review and Related Work}
 
 \subsection{Exact multidimensional indexing}
 
@@ -63,11 +83,11 @@ The earliest influential multidimensional indexes were designed for exact search
 
 These structures are elegant and foundational, but they do not scale cleanly into high-dimensional settings. As dimensionality increases, partitions become less discriminative and bounding regions overlap more heavily. The consequence is that exact structures often degenerate toward scan-like behavior, which is one of the central motivations for later ANN work \cite{indyk1998,gionis1999,andoni2018}.
 
-\subsection{Approximate nearest-neighbor search}
+\subsection{Approximate nearest-neighbor families}
 
 Indyk and Motwani formalized the approximate nearest-neighbor problem and showed that exactness could be relaxed while still preserving useful retrieval guarantees \cite{indyk1998}. Their locality-sensitive hashing framework made similarity search sublinear in settings where exact geometric methods were already breaking down. Gionis, Indyk, and Motwani then connected this idea more directly to similarity search in high-dimensional datasets \cite{gionis1999}.
 
-Later work diversified the design space. FLANN demonstrated that practical ANN performance depends strongly on data characteristics and that automated method selection is valuable even among tree-based methods \cite{muja2014}. Cover trees showed that intrinsic structure can matter more than nominal dimension in some metric spaces \cite{beygelzimer2006}. Product quantization reframed large-scale ANN partly as a compression problem \cite{jegou2011}. NSG and HNSW showed that graph navigation can provide excellent empirical recall-latency tradeoffs \cite{fu2019,malkov2020}. At billion scale, Johnson, Douze, and J\'egou further showed that hardware-aware system design is inseparable from ANN performance \cite{johnson2021}.
+Later work diversified the design space. FLANN demonstrated that practical ANN performance depends strongly on data characteristics and that automated method selection is valuable even among tree-based methods \cite{muja2014}. Cover trees showed that intrinsic structure can matter more than nominal dimension in some metric spaces \cite{beygelzimer2006}. Product quantization reframed large-scale ANN partly as a compression problem \cite{jegou2011}. NSG and HNSW showed that graph navigation can provide excellent empirical recall-latency tradeoffs \cite{fu2019,malkov2020}. At billion scale, Johnson, Douze, and J\'egou further showed that hardware-aware system design is inseparable from ANN performance \cite{johnson2021}. More recent work by Gao and Long highlighted that distance comparison itself dominates much ANN running time, opening another optimization axis beyond index topology alone \cite{gao2023}.
 
 \subsection{Why temporal subset search is a distinct problem}
 
@@ -79,7 +99,13 @@ These families of methods largely assume that the search space is the full vecto
 
 This is not a trivial wrapper around ANN. A global index may retrieve high-quality neighbors that are later rejected by the filter, wasting search effort. A partitioned structure may reduce that waste, but only if the partitions align well with the subset constraints and if maintenance under insertions, expirations, and open-ended intervals remains manageable. Temporal subset ANN therefore sits at the intersection of indexing, filtering, and dynamic maintenance.
 
-\section{Problem Formulation}
+\subsection{Research gap and positioning}
+
+The literature reviewed above supplies mature answers for unconstrained ANN, but it leaves a gap in workload-aware subset-constrained search. Exact multidimensional indexes teach how to prune by structure, ANN methods teach how to trade precision for speed, and graph- or quantization-based systems show how to scale. Yet the standard formulations do not directly answer when an ANN system should search globally, when it should route to a constrained partition, or when it should abandon ANN altogether and use exact local evaluation.
+
+This report positions temporal subset ANN as a \emph{strategy selection} problem. The prototype does not claim a universally best index. Instead, it tests whether different search organizations dominate under different temporal workloads, and whether a planner can identify those regimes reliably. That framing connects the literature review directly to the experimental component of the report.
+
+\section{Problem Formulation and Research Questions}
 
 Each record in the prototype has the form
 \[
@@ -91,9 +117,20 @@ Each query has the form
 \[
 q = (x, [T_s, T_e], [P_s, P_e], c, k),
 \]
-where $x$ is the query vector, $[T_s, T_e]$ is the requested time window, $[P_s, P_e]$ is the requested scalar range, $c$ is an optional category restriction, and $k$ is the number of neighbors requested. A record is eligible when its validity interval intersects the query window and its metadata satisfy the scalar and categorical constraints.
+where $x$ is the query vector, $[T_s, T_e]$ is the requested time window, $[P_s, P_e]$ is the requested scalar range, $c$ is an optional category restriction, and $k$ is the number of neighbors requested. A record is eligible when its validity interval intersects the query window and its metadata satisfy the scalar and categorical constraints. Defining the eligible subset as
+\[
+S_q = \{r_i : [t_i^{start}, t_i^{end}] \cap [T_s, T_e] \neq \emptyset,\; p_i \in [P_s,P_e],\; c_i \text{ matches if specified}\},
+\]
+the retrieval goal is to return the top-$k$ nearest records in $S_q$ under Euclidean distance.
 
-The algorithmic goal is to return the top-$k$ nearest eligible records under Euclidean distance while minimizing latency and maintenance overhead. This report evaluates not only retrieval quality but also the planner's ability to select an effective strategy under changing subset conditions.
+This report evaluates three concrete research questions.
+\begin{description}[leftmargin=*,style=nextline]
+    \item[RQ1.] Does global ANN followed by exact filtering remain competitive once the valid subset becomes small relative to the full collection?
+    \item[RQ2.] Does partition-first routing offer a consistently better fixed tradeoff between recall and latency under temporal subset constraints?
+    \item[RQ3.] Can a workload-aware hybrid planner recover most of the benefit of the best fixed strategy without knowing the workload in advance?
+\end{description}
+
+The working hypotheses are correspondingly straightforward: global post-filtering should lose efficiency and sometimes recall under restrictive subsets; partition-first routing should dominate as a fixed strategy when partitions align with query constraints; and a hybrid planner should improve over any single weak baseline, but its quality will depend on the accuracy of subset estimation and strategy selection.
 
 \section{Prototype Design}
 
@@ -102,13 +139,13 @@ The algorithmic goal is to return the top-$k$ nearest eligible records under Euc
 The prototype compares four methods.
 
 \paragraph{Exact filtered oracle.}
-The oracle performs a flat scan over the currently active records, applies all filters exactly, computes the exact distances of the surviving candidates, and returns the true top-$k$. This method is slowest asymptotically, but it provides the correctness baseline.
+The oracle performs a flat scan over the currently active records, applies all filters exactly, computes the exact distances of the surviving candidates, and returns the true top-$k$. This method is slowest asymptotically, but it provides the correctness baseline and the denominator for recall calculations.
 
 \paragraph{Global ANN then filter.}
 This baseline builds a single ANN index over the active vectors and retrieves approximate nearest neighbors before filtering them by temporal validity and metadata. The method is conceptually simple, but it is expected to degrade when many top ANN candidates fall outside the valid subset.
 
 \paragraph{Partition-first ANN.}
-The partitioned method routes records by time and scalar buckets and maintains local ANN indexes inside sufficiently large cells. Small cells fall back to exact local scanning. The method also maintains interval-envelope metadata per cell, including the minimum and maximum interval endpoints, price bounds, open-ended counts, and category counts. These summaries are used to skip cells that cannot intersect the query.
+The partitioned method routes records by time and price buckets and maintains local ANN indexes inside sufficiently large cells. Small cells fall back to exact local scanning. The method also maintains interval-envelope metadata per cell, including the minimum and maximum interval endpoints, price bounds, open-ended counts, and category counts. These summaries are used to skip cells that cannot intersect the query.
 
 \paragraph{Hybrid planner.}
 The hybrid method estimates subset size from cell metadata and selects among exact search, partition-first ANN, and global ANN plus post-filtering. The current planner is rule-based rather than learned, but it logs its own feature values and outcomes so that planner quality can be analyzed directly.
@@ -117,7 +154,7 @@ The hybrid method estimates subset size from cell metadata and selects among exa
 
 The prototype supports insertions, logical deletions, and expirations. Records that become inactive are not immediately removed from every structure. Instead, the system uses tombstone ratios and threshold-triggered rebuilds. The global index compacts inactive records during rebuild, and the partitioned index compacts heavily tombstoned cells during local rebuilds. This makes the prototype more realistic than one that rebuilds the full structure after every update.
 
-\subsection{Implementation artifact}
+\subsection{Implementation artifact and reproducibility}
 
 The implementation is organized as a reproducible Python artifact rather than only as pseudocode. The repository includes separate modules for the exact oracle, global post-filter index, partition-first index, hybrid planner, workload generation, experiment execution, result summarization, plotting, and planner training. The ANN backend is also intentionally optional. When \texttt{hnswlib} is installed, the prototype can use an HNSW-backed candidate generator; when it is unavailable, the same interfaces fall back to brute-force candidate generation so that tests, smoke runs, and report-generation scripts remain executable in a minimal environment.
 
@@ -135,7 +172,7 @@ The experiments use synthetic vector data with controllable cluster structure, t
     \item \textbf{Open-ended heavy}: many records remain active indefinitely.
 \end{enumerate}
 
-Each workload is evaluated in 32 and 64 dimensions. The reported summary statistics aggregate repeated runs over multiple seeds.
+Each workload is evaluated in 32 and 64 dimensions. The reported summary statistics aggregate repeated runs over multiple seeds. This setup is intentionally modest enough to keep the artifact reproducible while still stressing the planner and maintenance behavior across materially different temporal regimes.
 
 \subsection{Metrics}
 
@@ -154,27 +191,21 @@ The evaluation uses:
 
 Planner regret compares the hybrid method to the fastest non-hybrid method that satisfies a recall floor for the same query. This is important because it evaluates the \emph{decision quality} of the hybrid planner, not only the raw retrieval quality.
 
+\subsection{Evaluation logic}
+
+The oracle defines ground truth. The global and partitioned methods are then evaluated against it per query, which allows recall, latency, and subset-estimation behavior to be studied at query granularity rather than only at the run level. That evaluation design is important because hybrid planners can look strong in aggregate while still making many poor decisions on individual queries. Query-level traces make it possible to isolate exactly that failure mode.
+
 \section{Results}
 
 \subsection{Fixed strategy comparison}
 
 The clearest result is that global ANN plus post-filtering is the weakest strategy in this temporal subset setting. Averaged over the two tested dimensions, the global method achieves mean Recall@10 values of roughly 0.31 in the static workload, 0.67 in short-life expire, 0.69 in long-life expire, and 0.67 in open-ended-heavy workloads. In contrast, partition-first ANN maintains Recall@10 of 1.0 in every workload tested. Figure~\ref{fig:recall} summarizes this pattern.
 
-\begin{figure}[t]
-    \centering
-    \includegraphics[width=\linewidth]{results/figures/recall_by_workload.png}
-    \caption{Mean Recall@10 averaged over 32- and 64-dimensional runs at $n=5000$. Global ANN plus post-filtering degrades substantially under subset constraints, while partition-first ANN remains exact in the tested workloads.}
-    \label{fig:recall}
-\end{figure}
+\reportfigure{results/figures/recall_by_workload.png}{Mean Recall@10 averaged over 32- and 64-dimensional runs at $n=5000$. Global ANN plus post-filtering degrades substantially under subset constraints, while partition-first ANN remains exact in the tested workloads.}{fig:recall}
 
 Latency tells a similarly clear story. Partition-first ANN also produces the lowest median latency across the tested workloads, with average p50 latency between approximately 0.10\,ms and 0.39\,ms. Exact filtered search is slower but still competitive because the subset constraints reduce candidate counts in many cases. Global ANN plus post-filtering is much slower, often between roughly 1.3\,ms and 2.9\,ms on average. Figure~\ref{fig:latency} shows these differences.
 
-\begin{figure}[t]
-    \centering
-    \includegraphics[width=\linewidth]{results/figures/latency_by_workload.png}
-    \caption{Mean p50 latency averaged over 32- and 64-dimensional runs at $n=5000$. Partition-first ANN is the fastest fixed strategy in the current prototype.}
-    \label{fig:latency}
-\end{figure}
+\reportfigure{results/figures/latency_by_workload.png}{Mean p50 latency averaged over 32- and 64-dimensional runs at $n=5000$. Partition-first ANN is the fastest fixed strategy in the current prototype.}{fig:latency}
 
 Table~\ref{tab:avgresults} reports the workload-averaged Recall@10 and p50 latency across dimensions. The strongest fixed conclusion is straightforward: in this prototype, routing search into the relevant temporal and scalar partitions is substantially more effective than retrieving neighbors globally and filtering afterward.
 
@@ -211,12 +242,7 @@ Open-ended heavy & Partition-first ANN & 1.000 & 0.368 \\
 
 A major improvement over earlier versions of the prototype is that subset estimation is no longer the dominant failure point. Mean subset-estimate error is modest across all reported workloads: roughly 0.07 to 0.08 in the static setting, about 0.03 to 0.05 in the short- and long-lifetime settings, and around 0.037 in the open-ended-heavy setting. Figure~\ref{fig:estimator} visualizes these values.
 
-\begin{figure}[t]
-    \centering
-    \includegraphics[width=\linewidth]{results/figures/estimator_error.png}
-    \caption{Mean subset-estimate error by workload. Estimation quality is now relatively stable, which shifts attention to planner quality rather than estimator failure.}
-    \label{fig:estimator}
-\end{figure}
+\reportfigure{results/figures/estimator_error.png}{Mean subset-estimate error by workload. Estimation quality is now relatively stable, which shifts attention to planner quality rather than estimator failure.}{fig:estimator}
 
 This matters because it changes the interpretation of the hybrid results. Earlier development artifacts suggested that poor subset estimates might explain planner failures under hard temporal regimes. The final artifact indicates otherwise: estimator quality is now reasonably good. The remaining weakness lies in the planner's decision policy.
 
@@ -226,18 +252,15 @@ The hybrid planner substantially improves over the global post-filter baseline. 
 
 At the same time, the planner is still not choosing the best strategy often enough. Averaged across dimensions, hybrid planner match rate is about 0.43 in the static workload, 0.27 in short-life expire, 0.33 in long-life expire, and 0.50 in open-ended-heavy workloads. Mean planner latency regret ranges from about 0.98 to 1.77. Figure~\ref{fig:planner} summarizes these planner-quality metrics.
 
-\begin{figure}[t]
-    \centering
-    \includegraphics[width=\linewidth]{results/figures/planner_quality.png}
-    \caption{Hybrid planner quality by workload. Match rate remains modest and latency regret remains substantial, showing that planner selection is still the main unresolved problem.}
-    \label{fig:planner}
-\end{figure}
+\reportfigure{results/figures/planner_quality.png}{Hybrid planner quality by workload. Match rate remains modest and latency regret remains substantial, showing that planner selection is still the main unresolved problem.}{fig:planner}
 
 This is the most important negative result in the paper. The prototype now demonstrates that \emph{adaptive search is worth attempting}, but it does not yet demonstrate that the current rule-based planner is close to optimal. The planner still overuses exact search in easy settings and overuses global filtering in some hard temporal settings. In other words, the design space is well motivated, but the current planner remains a baseline rather than a final solution.
 
 \subsection{Maintenance costs}
 
 Dynamic maintenance is visible in the reported rebuild and compaction statistics. Short-life and open-ended workloads generate large cell-rebuild counts and compaction events because those workloads create the heaviest temporal turnover. This is not surprising: the same conditions that make subset routing valuable also increase maintenance pressure. The key point is that the partition-first method still retains its retrieval advantage even under these maintenance-heavy workloads. That suggests the maintenance cost is real but not disqualifying in the current prototype.
+
+\reportfigure{results/figures/maintenance_metrics.png}{Maintenance-oriented counters by workload. Expiration-heavy regimes increase compaction and rebuild pressure, but the partition-first method still preserves the best retrieval behavior in the current prototype.}{fig:maintenance}
 
 \section{Discussion}
 
@@ -249,11 +272,13 @@ Second, partition-first routing is highly effective in the present prototype. Th
 
 Third, hybridization is promising but incomplete. The hybrid planner clearly improves over the global baseline and often preserves exact-level recall. However, planner match rates and regret show that selecting the right mode remains difficult. The current system therefore supports a nuanced conclusion: \emph{the adaptive formulation is justified, but the planner itself remains the main research challenge.}
 
-\section{Limitations and Future Work}
+A useful way to interpret the fixed-strategy results is through candidate waste. Global ANN retrieval spends effort to find globally similar vectors whether or not they satisfy the temporal and scalar filters. In restrictive workloads, many of those candidates are simply unusable. Partition-first routing reduces that waste by making subset membership part of the routing decision. The prototype results suggest that this structural alignment matters more than squeezing small efficiency gains out of any single ANN kernel.
+
+\section{Threats to Validity and Future Work}
 
 The report has several limitations. The experiments are synthetic rather than based on a production vector database, so real-world distributions may differ. The metadata model includes a single scalar filter and optional category rather than many heterogeneous attributes. The reported hybrid planner is rule-based, and the included nearest-centroid learned-planner workflow is only an initial artifact rather than a robust planner-selection solution. Finally, the current prototype measures dynamic maintenance through rebuild and compaction counts, but it does not yet optimize those operations aggressively.
 
-The most direct next step is to replace the rule-based planner with a stronger learned planner trained on the logged query features and per-query outcomes. The final artifact already records the information needed for that step, including estimator error, mode choices, planner regret, and workload descriptors. A learned planner could then be evaluated against the rule-based planner using the same benchmark harness.
+These limitations suggest several immediate next steps. The most direct is to replace the rule-based planner with a stronger learned planner trained on the logged query features and per-query outcomes. The final artifact already records the information needed for that step, including estimator error, mode choices, planner regret, and workload descriptors. A learned planner could then be evaluated against the rule-based planner using the same benchmark harness. A second direction is richer subset-aware indexing, including multi-scalar routing, category-aware partitioning, or dual interval indexes over both start and end times. A third direction is systems-oriented optimization. Recent ANN work suggests that faster distance comparison and candidate evaluation can change the relative strength of search strategies \cite{gao2023}; integrating those ideas into the temporal-subset setting may reduce the cost of both global filtering and local exact fallbacks.
 
 \section{Conclusion}
 
