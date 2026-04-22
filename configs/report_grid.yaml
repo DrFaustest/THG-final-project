@@ -1,0 +1,62 @@
+output: results/csv/run_grid.csv
+seeds: [11, 29, 47]
+dimensions: [32, 64]
+dataset_sizes: [5000]
+num_queries: 120
+k: 10
+
+index_config:
+  partition_exact_threshold: 250
+  planner_exact_threshold: 25
+  planner_max_cells_for_partition: 96
+  planner_min_avg_cell_size: 10
+  global_initial_alpha: 2
+  global_min_budget: 20
+  global_max_budget: 200
+  local_budget_factor: 2
+
+regimes:
+  - name: static
+    synthetic:
+      n: 5000
+      d: 32
+      num_clusters: 20
+      drift_strength: 0.1
+      attr_corr: 0.5
+
+  - name: short_lifetime_expire
+    synthetic:
+      n: 5000
+      d: 32
+      num_clusters: 20
+      drift_strength: 0.3
+      attr_corr: 0.5
+      lifetime_min: 1
+      lifetime_max: 14
+    operations:
+      expire_before: 180
+
+  - name: long_lifetime_expire
+    synthetic:
+      n: 5000
+      d: 32
+      num_clusters: 20
+      drift_strength: 0.5
+      attr_corr: 0.5
+      lifetime_min: 120
+      lifetime_max: 365
+    operations:
+      expire_before: 180
+
+  - name: open_ended_heavy
+    synthetic:
+      n: 5000
+      d: 32
+      num_clusters: 20
+      drift_strength: 0.5
+      attr_corr: 0.5
+      lifetime_min: 30
+      lifetime_max: 180
+      open_ended_fraction: 0.7
+    operations:
+      expire_before: 180

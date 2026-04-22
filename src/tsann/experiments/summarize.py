@@ -52,6 +52,9 @@ def _summarize(path: Path) -> dict[str, dict[str, float | str]]:
                     "compaction_count": [],
                     "deleted_record_count": [],
                     "expired_record_count": [],
+                    "planner_matched_best_mode": [],
+                    "planner_latency_regret": [],
+                    "planner_recall_gap": [],
                     "planner_mode": [],
                 },
             )
@@ -68,6 +71,9 @@ def _summarize(path: Path) -> dict[str, dict[str, float | str]]:
             _append_float(group, "compaction_count", row)
             _append_float(group, "deleted_record_count", row)
             _append_float(group, "expired_record_count", row)
+            _append_float(group, "planner_matched_best_mode", row)
+            _append_float(group, "planner_latency_regret", row)
+            _append_float(group, "planner_recall_gap", row)
             if row.get("planner_mode"):
                 group["planner_mode"].append(row["planner_mode"])
 
@@ -88,6 +94,10 @@ def _summarize(path: Path) -> dict[str, dict[str, float | str]]:
             "max_compaction_count": max(values["compaction_count"], default=0.0),
             "max_deleted_record_count": max(values["deleted_record_count"], default=0.0),
             "max_expired_record_count": max(values["expired_record_count"], default=0.0),
+            "mean_planner_match_rate": _mean(values["planner_matched_best_mode"]),
+            "mean_planner_latency_regret": _mean(values["planner_latency_regret"]),
+            "p95_planner_latency_regret": _quantile(values["planner_latency_regret"], 0.95),
+            "mean_planner_recall_gap": _mean(values["planner_recall_gap"]),
             "planner_mode_counts": _mode_counts(values["planner_mode"]),
         }
         for group_name, values in groups.items()
@@ -114,6 +124,10 @@ def _write_summary(path: Path, summary: dict[str, dict[str, float]]) -> None:
         "max_compaction_count",
         "max_deleted_record_count",
         "max_expired_record_count",
+        "mean_planner_match_rate",
+        "mean_planner_latency_regret",
+        "p95_planner_latency_regret",
+        "mean_planner_recall_gap",
         "planner_mode_counts",
     ]
     with path.open("w", newline="", encoding="utf-8") as handle:

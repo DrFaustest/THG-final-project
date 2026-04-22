@@ -69,6 +69,7 @@ Experiment CSV files are written under `results/csv/`. Each row is per query and
 - `recall_by_workload.png`
 - `subset_estimate_error.png`
 - `planner_mode_counts.png`
+- `planner_regret_by_workload.png`
 - `maintenance_metrics.png`
 
 `configs/smoke_grid.yaml` includes small workloads for static, append/delete, short-lived expiration, long-lived expiration, and mostly open-ended intervals. It is intentionally small enough for development runs. `configs/research_grid.example.yaml` shows a larger multi-seed, multi-dimension, multi-scale matrix for paper-oriented runs.

@@ -49,6 +49,9 @@ FIELDNAMES = [
     "best_mode",
     "best_mode_latency_ms",
     "best_mode_recall_at_10",
+    "planner_matched_best_mode",
+    "planner_latency_regret",
+    "planner_recall_gap",
     "active_records",
     "tombstoned_records",
     "tombstone_ratio",
@@ -123,14 +126,25 @@ def run_experiment(
             for name, algorithm in algorithms.items():
                 result = results[name]
                 stats = _maintenance_stats(algorithm.stats())
+                planner_mode = result.metadata.get("planner_mode", "")
+                latency = float(result.metadata.get("latency_ms", 0.0))
+                best_latency = float(results[best_mode].metadata.get("latency_ms", 0.0))
+                recall = recalls[name]
+                planner_matched = int(name == "hybrid" and planner_mode == best_mode)
+                latency_regret = (
+                    (latency - best_latency) / max(best_latency, 1e-9)
+                    if name == "hybrid"
+                    else 0.0
+                )
+                recall_gap = (recalls[best_mode] - recall) if name == "hybrid" else 0.0
                 writer.writerow(
                     {
                         "workload": workload,
                         "seed": seed,
                         "query_id": query_id,
                         "algorithm": name,
-                        "latency_ms": result.metadata.get("latency_ms", 0.0),
-                        "recall_at_10": recall_at_k(result, truth, 10),
+                        "latency_ms": latency,
+                        "recall_at_10": recall,
                         "valid_result_rate": valid_result_rate(result, query, id_to_record),
                         "exact_subset_size": exact_subset_size,
                         "subset_size_estimate": estimate.subset_size,
@@ -146,7 +160,7 @@ def run_experiment(
                         "ann_expansion_rounds": result.metadata.get("ann_expansion_rounds", 0),
                         "exact_distance_computations": result.metadata.get("exact_distance_computations", 0),
                         "planner_type": result.metadata.get("planner_type", ""),
-                        "planner_mode": result.metadata.get("planner_mode", ""),
+                        "planner_mode": planner_mode,
                         "planner_feature_subset_size": result.metadata.get("planner_feature_subset_size", ""),
                         "planner_feature_num_cells": result.metadata.get("planner_feature_num_cells", ""),
                         "planner_feature_avg_cell_size": result.metadata.get("planner_feature_avg_cell_size", ""),
@@ -159,8 +173,11 @@ def run_experiment(
                         "planner_feature_open_ended_fraction": result.metadata.get("planner_feature_open_ended_fraction", ""),
                         "planner_feature_fragmentation_score": result.metadata.get("planner_feature_fragmentation_score", ""),
                         "best_mode": best_mode,
-                        "best_mode_latency_ms": results[best_mode].metadata.get("latency_ms", 0.0),
+                        "best_mode_latency_ms": best_latency,
                         "best_mode_recall_at_10": recalls[best_mode],
+                        "planner_matched_best_mode": planner_matched,
+                        "planner_latency_regret": latency_regret,
+                        "planner_recall_gap": recall_gap,
                         "active_records": stats["active_records"],
                         "tombstoned_records": stats["tombstoned_records"],
                         "tombstone_ratio": stats["tombstone_ratio"],
