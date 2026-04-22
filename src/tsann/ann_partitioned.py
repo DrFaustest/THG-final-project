@@ -22,6 +22,13 @@ class PartitionCell:
     index: HnswVectorIndex | None = None
     rebuild_count: int = 0
     active_record_count: int = 0
+    min_valid_from: int | None = None
+    max_valid_from: int | None = None
+    min_valid_to: int | None = None
+    max_valid_to: int | None = None
+    open_ended_count: int = 0
+    min_price: float | None = None
+    max_price: float | None = None
 
     @property
     def record_count(self) -> int:
@@ -35,6 +42,49 @@ class PartitionCell:
 
     def inactive_count(self, active_ids: set[int]) -> int:
         return len(self.records) - self.active_record_count
+
+    def add_active_record(self, record: Record) -> None:
+        self.records.append(record)
+        self.active_record_count += 1
+        self._include_metadata(record)
+
+    def refresh_metadata(self, active_ids: set[int]) -> None:
+        self.active_record_count = 0
+        self.min_valid_from = None
+        self.max_valid_from = None
+        self.min_valid_to = None
+        self.max_valid_to = None
+        self.open_ended_count = 0
+        self.min_price = None
+        self.max_price = None
+        for record in self.records:
+            if record.id in active_ids:
+                self.active_record_count += 1
+                self._include_metadata(record)
+
+    def can_intersect(self, query: Query) -> bool:
+        if self.active_record_count == 0:
+            return False
+        if self.min_valid_from is not None and self.min_valid_from > query.t_end:
+            return False
+        if self.open_ended_count == 0 and self.max_valid_to is not None and self.max_valid_to < query.t_start:
+            return False
+        if self.min_price is not None and self.min_price > query.price_max:
+            return False
+        if self.max_price is not None and self.max_price < query.price_min:
+            return False
+        return True
+
+    def _include_metadata(self, record: Record) -> None:
+        self.min_valid_from = record.valid_from if self.min_valid_from is None else min(self.min_valid_from, record.valid_from)
+        self.max_valid_from = record.valid_from if self.max_valid_from is None else max(self.max_valid_from, record.valid_from)
+        if record.valid_to is None:
+            self.open_ended_count += 1
+        else:
+            self.min_valid_to = record.valid_to if self.min_valid_to is None else min(self.min_valid_to, record.valid_to)
+            self.max_valid_to = record.valid_to if self.max_valid_to is None else max(self.max_valid_to, record.valid_to)
+        self.min_price = record.price if self.min_price is None else min(self.min_price, record.price)
+        self.max_price = record.price if self.max_price is None else max(self.max_price, record.price)
 
     def build_index(self, config: IndexConfig, active_ids: set[int]) -> None:
         active_records = self.active_records(active_ids)
@@ -88,7 +138,7 @@ class PartitionFirstAnnIndex(BaseTemporalSubsetIndex):
         if record_id in self.active_ids:
             self.active_ids.remove(record_id)
             key = self.router.key_for_record(self.id_to_record[record_id])
-            self.cells[key].active_record_count -= 1
+            self.cells[key].refresh_metadata(self.active_ids)
             self._maybe_rebuild_cell(key)
 
     def expire(self, before_time: int) -> int:
@@ -100,7 +150,7 @@ class PartitionFirstAnnIndex(BaseTemporalSubsetIndex):
         affected_keys = {self.router.key_for_record(self.id_to_record[record_id]) for record_id in expired}
         for record_id in expired:
             self.active_ids.remove(record_id)
-            self.cells[self.router.key_for_record(self.id_to_record[record_id])].active_record_count -= 1
+            self.cells[self.router.key_for_record(self.id_to_record[record_id])].refresh_metadata(self.active_ids)
         for key in affected_keys:
             self._maybe_rebuild_cell(key)
         return len(expired)
@@ -113,8 +163,7 @@ class PartitionFirstAnnIndex(BaseTemporalSubsetIndex):
         self.active_ids.add(record.id)
         key = self.router.key_for_record(record)
         cell = self.cells.setdefault(key, PartitionCell(key))
-        cell.records.append(record)
-        cell.active_record_count += 1
+        cell.add_active_record(record)
 
     def _maybe_rebuild_cell(self, key: CellKey) -> None:
         cell = self.cells.get(key)
@@ -132,16 +181,15 @@ class PartitionFirstAnnIndex(BaseTemporalSubsetIndex):
         return SubsetEstimate(subset_size=subset_size, num_cells=len(keys), avg_cell_size=avg)
 
     def _estimate_cell_overlap(self, cell: PartitionCell, query: Query) -> float:
-        time_fraction = self.router.time_bucketizer.overlap_fraction(
-            cell.key.time_bucket,
-            min(query.t_start, cell.key.time_bucket * self.config.time_bucket_width),
+        if not cell.can_intersect(query):
+            return 0.0
+        time_fraction = _range_overlap_fraction(
+            cell.min_valid_from,
+            query.t_end if cell.open_ended_count else cell.max_valid_to,
+            query.t_start,
             query.t_end,
         )
-        price_fraction = self.router.price_bucketizer.overlap_fraction(
-            cell.key.price_bucket,
-            query.price_min,
-            query.price_max,
-        )
+        price_fraction = _range_overlap_fraction(cell.min_price, cell.max_price, query.price_min, query.price_max)
         return cell.active_record_count * time_fraction * price_fraction
 
     def search(self, query: Query) -> SearchResult:
@@ -206,7 +254,7 @@ class PartitionFirstAnnIndex(BaseTemporalSubsetIndex):
                 continue
             if query.category is not None and key.category != query.category:
                 continue
-            if self.cells[key].active_record_count == 0:
+            if not self.cells[key].can_intersect(query):
                 continue
             expanded.append(key)
         return sorted(expanded)
@@ -220,4 +268,24 @@ class PartitionFirstAnnIndex(BaseTemporalSubsetIndex):
             "cells": len(self.cells),
             "ann_cells": sum(1 for cell in self.cells.values() if cell.index is not None),
             "cell_rebuild_count": sum(cell.rebuild_count for cell in self.cells.values()),
+            "open_ended_records": sum(cell.open_ended_count for cell in self.cells.values()),
         }
+
+
+def _range_overlap_fraction(
+    envelope_min: int | float | None,
+    envelope_max: int | float | None,
+    query_min: int | float,
+    query_max: int | float,
+) -> float:
+    if envelope_min is None or envelope_max is None:
+        return 0.0
+    if envelope_max < envelope_min:
+        return 0.0
+    overlap_min = max(envelope_min, query_min)
+    overlap_max = min(envelope_max, query_max)
+    if overlap_min > overlap_max:
+        return 0.0
+    envelope_width = max(float(envelope_max - envelope_min), 1.0)
+    overlap_width = max(float(overlap_max - overlap_min), 1.0)
+    return min(1.0, overlap_width / envelope_width)

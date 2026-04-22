@@ -44,6 +44,10 @@ class HnswVectorIndex:
         self._index.add_items(matrix, np.asarray(self._ids, dtype=np.int64))
         self._index.set_ef(self.ef_search)
 
+    @property
+    def size(self) -> int:
+        return len(self._ids)
+
     def knn_query(self, vector: np.ndarray, k: int) -> tuple[list[int], list[float]]:
         if k <= 0 or not self._ids:
             return [], []

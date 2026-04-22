@@ -90,7 +90,8 @@ class GlobalAnnThenFilterIndex(BaseTemporalSubsetIndex):
         if self.index is None or query.k == 0 or not self.active_ids:
             return SearchResult([], [], self._metadata(start, 0, 0, 0, 0, 0))
 
-        max_budget = self.config.global_max_budget or len(self.records)
+        index_visible_size = self.index.size
+        max_budget = min(self.config.global_max_budget or index_visible_size, index_visible_size)
         budget = min(max(self.config.global_min_budget, self.config.global_initial_alpha * query.k), max_budget)
         rounds = 0
         final_items: list[tuple[int, float]] = []
@@ -117,7 +118,11 @@ class GlobalAnnThenFilterIndex(BaseTemporalSubsetIndex):
             budget = min(budget * 2, max_budget)
 
         ids, distances = merge_topk(final_items, query.k)
-        return SearchResult(ids, distances, self._metadata(start, candidate_count, filtered_out, rounds, budget, len(final_items)))
+        return SearchResult(
+            ids,
+            distances,
+            self._metadata(start, candidate_count, filtered_out, rounds, budget, len(final_items), index_visible_size),
+        )
 
     def _metadata(
         self,
@@ -127,6 +132,7 @@ class GlobalAnnThenFilterIndex(BaseTemporalSubsetIndex):
         rounds: int,
         budget: int,
         exact_distance_count: int,
+        index_visible_size: int = 0,
     ) -> dict:
         return {
             "algorithm": "global_filter",
@@ -135,6 +141,8 @@ class GlobalAnnThenFilterIndex(BaseTemporalSubsetIndex):
             "filtered_out_count": filtered_out,
             "ann_expansion_rounds": rounds,
             "candidate_budget_final": budget,
+            "active_record_count": len(self.active_ids),
+            "index_visible_size": index_visible_size,
             "filter_pass_rate": 0.0 if candidate_count == 0 else (candidate_count - filtered_out) / candidate_count,
             "latency_ms": (time.perf_counter() - start) * 1000,
             "exact_distance_computations": exact_distance_count,

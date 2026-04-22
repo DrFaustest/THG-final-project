@@ -37,6 +37,25 @@ def test_expire_removes_only_records_ending_before_cutoff() -> None:
     assert {2, 3}.issubset(set(result.ids))
 
 
+def test_delete_already_expired_record_is_idempotent() -> None:
+    vector = np.array([1.0, 0.0], dtype=np.float32)
+    index = HybridPlannerIndex()
+    index.build([Record(1, vector, 0, 1.0, None, 2)])
+    assert index.expire(before_time=3) == 1
+    index.delete(1)
+    result = index.search(Query(vector, 1, 0, 10, 0.0, 2.0))
+    assert result.ids == []
+
+
+def test_expire_with_no_matching_records_returns_zero() -> None:
+    vector = np.array([1.0, 0.0], dtype=np.float32)
+    index = HybridPlannerIndex()
+    index.build([Record(1, vector, 0, 1.0, None, 10)])
+    assert index.expire(before_time=3) == 0
+    result = index.search(Query(vector, 1, 0, 10, 0.0, 2.0))
+    assert result.ids == [1]
+
+
 def test_hybrid_handles_mixed_insert_delete_expire_sequence() -> None:
     vector = np.array([0.0, 0.0], dtype=np.float32)
     index = HybridPlannerIndex()
