@@ -77,33 +77,78 @@ The report contributes three things. First, it synthesizes the broader ANN liter
 
 \section{Literature Review and Related Work}
 
-\subsection{Exact multidimensional indexing}
+\subsection{From exact indexing to approximation}
 
-The earliest influential multidimensional indexes were designed for exact search. Bentley's k-d tree recursively partitions data along coordinate axes and generalizes binary search tree ideas to multiple dimensions \cite{bentley1975}. Guttman's R-tree organizes spatial objects with bounding rectangles and became especially important in multidimensional database systems \cite{guttman1984}. Both methods rely on the same fundamental idea: efficient search comes from structured exclusion of regions that cannot contain the answer.
+The early literature on multidimensional search was dominated by exact indexing structures. Bentley's k-d tree is one of the clearest examples of this design philosophy: recursively partition the space, prune subtrees that cannot contain the answer, and rely on geometric structure to reduce query work \cite{bentley1975}. Guttman's R-tree extends that same basic intuition to spatial objects and regions rather than only points, using bounding rectangles to organize objects hierarchically for spatial retrieval \cite{guttman1984}. These papers are foundational because they establish the central premise that indexing pays off when the geometry of the data allows large parts of the search space to be excluded early.
 
-These structures are elegant and foundational, but they do not scale cleanly into high-dimensional settings. As dimensionality increases, partitions become less discriminative and bounding regions overlap more heavily. The consequence is that exact structures often degenerate toward scan-like behavior, which is one of the central motivations for later ANN work \cite{indyk1998,gionis1999,andoni2018}.
+The key limitation, later emphasized by ANN work, is that this geometric advantage decays in high dimensions. As dimensionality increases, partitions become less selective, bounding regions overlap more heavily, and the number of branches that must be explored rises sharply. In practice, that means exact indexes often drift toward scan-like behavior when used on modern feature vectors or embeddings \cite{indyk1998,gionis1999,andoni2018}. This transition is the conceptual bridge between the classical indexing literature and the ANN literature: the question stops being how to answer nearest-neighbor queries exactly at any cost and becomes when exactness is worth preserving.
 
-\subsection{Approximate nearest-neighbor families}
+\subsection{The curse of dimensionality as the turning point}
 
-Indyk and Motwani formalized the approximate nearest-neighbor problem and showed that exactness could be relaxed while still preserving useful retrieval guarantees \cite{indyk1998}. Their locality-sensitive hashing framework made similarity search sublinear in settings where exact geometric methods were already breaking down. Gionis, Indyk, and Motwani then connected this idea more directly to similarity search in high-dimensional datasets \cite{gionis1999}.
+The curse of dimensionality is not just a slogan in this literature; it changes the algorithmic regime. Indyk and Motwani explicitly frame approximate nearest neighbors as a response to the fact that decades of effort had still not produced satisfactory exact methods for high-dimensional settings \cite{indyk1998}. Gionis, Indyk, and Motwani make the same point in database language, arguing that traditional tree-based methods degrade quickly once dimensionality climbs much beyond the low-dimensional case \cite{gionis1999}. The survey by Andoni, Indyk, and Razenshteyn later shows how this observation became the organizing principle for two decades of ANN research \cite{andoni2018}.
 
-Later work diversified the design space. FLANN demonstrated that practical ANN performance depends strongly on data characteristics and that automated method selection is valuable even among tree-based methods \cite{muja2014}. Cover trees showed that intrinsic structure can matter more than nominal dimension in some metric spaces \cite{beygelzimer2006}. Product quantization reframed large-scale ANN partly as a compression problem \cite{jegou2011}. NSG and HNSW showed that graph navigation can provide excellent empirical recall-latency tradeoffs \cite{fu2019,malkov2020}. At billion scale, Johnson, Douze, and J\'egou further showed that hardware-aware system design is inseparable from ANN performance \cite{johnson2021}. More recent work by Gao and Long highlighted that distance comparison itself dominates much ANN running time, opening another optimization axis beyond index topology alone \cite{gao2023}.
+What changes under this view is not merely the objective function but the evaluation criteria themselves. Exact multidimensional indexing is typically justified by asymptotic pruning power. High-dimensional ANN systems, by contrast, are judged by recall, latency, memory footprint, preprocessing cost, update behavior, and robustness to the data distribution \cite{muja2014,fu2019,malkov2020,johnson2021}. This broader perspective matters for the present project because temporal subset ANN is even less about a single asymptotic result and more about a system-level balance among competing costs.
 
-\subsection{Why temporal subset search is a distinct problem}
+\subsection{Hash-based ANN and the first major approximation framework}
 
-These families of methods largely assume that the search space is the full vector collection. In many real systems, however, a user rarely wants the nearest vector across everything. Instead, the user wants the nearest vector among items that are currently valid, fall into a date range, satisfy a scalar constraint, or belong to a category. In that setting, the algorithm must handle two intertwined problems:
-\begin{enumerate}[leftmargin=*,nosep]
-    \item efficient similarity search in high dimensions, and
-    \item efficient restriction of that search to a changing subset.
-\end{enumerate}
+The first major break from exact geometric search came from locality-sensitive hashing. Indyk and Motwani introduced the formal approximate nearest-neighbor problem and gave locality-sensitive hashing as a way to obtain sublinear behavior in spaces where classical exact indexing was failing \cite{indyk1998}. The central insight is that one does not need a partition that perfectly preserves geometry. Instead, one needs hash functions whose collision probabilities are correlated with similarity.
 
-This is not a trivial wrapper around ANN. A global index may retrieve high-quality neighbors that are later rejected by the filter, wasting search effort. A partitioned structure may reduce that waste, but only if the partitions align well with the subset constraints and if maintenance under insertions, expirations, and open-ended intervals remains manageable. Temporal subset ANN therefore sits at the intersection of indexing, filtering, and dynamic maintenance.
+Gionis, Indyk, and Motwani then showed how this approach could be turned into a practical similarity-search mechanism for high-dimensional data, emphasizing that approximate search is often acceptable in applications where the representation itself is already heuristic \cite{gionis1999}. Hashing-based methods therefore occupy an important place in the literature for two reasons. First, they provided some of the first strong theoretical intuitions for sublinear ANN. Second, they normalized the idea that approximate answers are often algorithmically and practically preferable to expensive exact search.
 
-\subsection{Research gap and positioning}
+At the same time, the later literature makes clear that LSH is not universally dominant. Memory overhead, parameter tuning, and data dependence remain significant issues, and later methods often outperform it on real workloads even if its theoretical framing remains highly influential \cite{muja2014,jegou2011,fu2019}. That pattern is important for this report because it reinforces the broader theme that no single ANN family solves all workload types.
 
-The literature reviewed above supplies mature answers for unconstrained ANN, but it leaves a gap in workload-aware subset-constrained search. Exact multidimensional indexes teach how to prune by structure, ANN methods teach how to trade precision for speed, and graph- or quantization-based systems show how to scale. Yet the standard formulations do not directly answer when an ANN system should search globally, when it should route to a constrained partition, or when it should abandon ANN altogether and use exact local evaluation.
+\subsection{Tree-based practical ANN and intrinsic-dimension approaches}
 
-This report positions temporal subset ANN as a \emph{strategy selection} problem. The prototype does not claim a universally best index. Instead, it tests whether different search organizations dominate under different temporal workloads, and whether a planner can identify those regimes reliably. That framing connects the literature review directly to the experimental component of the report.
+Although the literature moved away from exact tree structures, it did not abandon trees entirely. Instead, tree methods were adapted into approximate or data-adaptive forms. Muja and Lowe's FLANN is especially influential because it does not argue for a single dominant structure; rather, it shows that randomized k-d forests and hierarchical k-means trees can each be effective depending on dataset characteristics and desired operating points \cite{muja2014}. This work is important for the present paper because it explicitly frames ANN design as a \emph{selection} problem, not only a data-structure problem.
+
+A different tree-oriented line of work asks whether ambient dimensionality is even the right complexity measure. Cover trees assume that many real datasets have relatively low intrinsic structure even when embedded in high-dimensional spaces. Beygelzimer, Kakade, and Langford show that cover trees can maintain logarithmic-in-$n$ query behavior under bounded expansion assumptions while using linear space \cite{beygelzimer2006}. Even if those assumptions do not always hold strongly in practice, the paper is conceptually important because it shifts attention from nominal dimension to underlying structure.
+
+Together, FLANN and cover trees illustrate two different answers to the same question. FLANN accepts heterogeneity and automates method choice across practical tree variants \cite{muja2014}. Cover trees seek a stronger unifying principle based on intrinsic geometry \cite{beygelzimer2006}. Temporal subset ANN inherits lessons from both. Like FLANN, it may require strategy selection rather than one universal method. Like cover-tree thinking, it may benefit when constraints shrink the effective search space even if the ambient vector dimension remains unchanged.
+
+\subsection{Compression and quantization as indexing strategies}
+
+A major development in ANN research was the realization that approximate search could be treated partly as a compression problem. Product quantization is central here. J\'egou, Douze, and Schmid show that vectors can be decomposed into subvectors and quantized separately, yielding compact codes that support efficient approximate distance computation \cite{jegou2011}. This is a major systems contribution because it changes the resource balance of ANN. Instead of using memory only to store large exact vectors, one stores compressed representations that can still support useful search.
+
+Product quantization also matters because it connects ANN to the realities of very large collections. Once datasets reach millions or billions of vectors, distance computations and storage layout become inseparable concerns. Quantization-based approaches often sacrifice some raw accuracy relative to exact vector comparison, but they make scales feasible that would otherwise be impractical \cite{jegou2011,johnson2021}. This systems orientation is directly relevant to the temporal-subset problem because global search over all active vectors becomes less attractive as the number of invalid candidates rises. Compression may help global methods, but it does not solve the subset-routing mismatch by itself.
+
+\subsection{Graph-based ANN and the dominance of navigational search}
+
+Graph-based methods have become some of the strongest practical ANN approaches because they model search as navigation through an approximate neighborhood graph rather than as bucket lookup or recursive partitioning. Fu et al. explain the appeal clearly: graph search often checks fewer irrelevant points than tree or hashing alternatives because the neighbor relations are represented more directly \cite{fu2019}. Their NSG work is also notable for making explicit that graph quality depends on connectivity, out-degree control, search-path length, and memory usage, not on recall alone \cite{fu2019}.
+
+HNSW further strengthens this family by introducing layered small-world structure and logarithmic-style routing intuition. Malkov and Yashunin argue that hierarchical layers separate long-range and short-range links, improving search quality and scalability relative to earlier proximity-graph approaches \cite{malkov2020}. HNSW is especially relevant to this project because it represents the ANN backend most closely aligned with the prototype's candidate generation model.
+
+What graph-based ANN contributes conceptually is the shift from \emph{partitioning the space} to \emph{navigating the data}. That is a meaningful distinction for temporal subset ANN. A graph can be excellent at retrieving globally similar items while still being poorly aligned with a subset predicate. The present project's global-filter baseline illustrates exactly that tension: a strong global navigational structure does not necessarily become a strong subset-aware search system once temporal validity is imposed.
+
+\subsection{Hardware-aware ANN and the rise of systems concerns}
+
+As ANN matured, the literature moved from purely algorithmic comparisons to system-aware optimization. Johnson, Douze, and J\'egou show that billion-scale similarity search on GPUs depends not only on the index family but on carefully engineered selection kernels, memory hierarchy use, and compressed-domain computation \cite{johnson2021}. In other words, the effective ANN algorithm is no longer only the data structure; it is the joint design of the data structure and the execution platform.
+
+Recent work by Gao and Long pushes that perspective further by focusing on the cost of distance comparison operations themselves. Their argument is that for many modern ANN systems, especially graph-based and quantization-based ones, the dominant cost is often not the high-level index traversal but the repeated distance comparisons used to confirm or reject candidates \cite{gao2023}. This matters for the current project because temporal subset ANN introduces another layer of candidate waste. If many candidates produced by a global ANN strategy are later rejected by subset filters, then the system is paying both traversal cost and distance-comparison cost for ultimately useless work.
+
+\subsection{Synthesis: what the literature implies for temporal subset ANN}
+
+Taken together, the literature suggests three broad lessons. First, exact geometric indexes remain foundational but do not provide a sufficient solution once dimensionality and workload complexity increase \cite{bentley1975,guttman1984,indyk1998}. Second, ANN does not converge to one universally best structure; instead, the field has diversified into hashing, tree-based, quantization-based, graph-based, and hardware-aware approaches whose strengths depend on data distribution, scale, and accuracy requirements \cite{andoni2018,muja2014,jegou2011,fu2019,malkov2020,johnson2021}. Third, modern ANN performance is as much about workload alignment as about raw nearest-neighbor quality.
+
+That third lesson is the most important for this paper. The existing literature largely assumes that the search space is the full vector collection. Temporal subset ANN changes that assumption. The system must solve both similarity search and subset restriction at once. A strong global ANN index may still generate poor end-to-end behavior if many of its best candidates fail the temporal filter. Conversely, a partitioned or hybrid strategy may exploit subset structure even if it is not the globally best ANN method in the ordinary unconstrained setting. This is the gap the present research addresses.
+
+\begin{table*}[t]
+\caption{High-level comparison of ANN families discussed in the literature review.}
+\label{tab:litfamilies}
+\centering
+\small
+\begin{tabular}{p{2.4cm}p{3.2cm}p{4.2cm}p{4.8cm}}
+\toprule
+Family & Representative work & Main strength & Main limitation for temporal subset ANN \\
+\midrule
+Exact geometric indexing & k-d tree \cite{bentley1975}, R-tree \cite{guttman1984} & Clear pruning logic and strong conceptual foundations in low dimensions & Degrades under high dimensionality; pruning does not directly address dynamic subset predicates \\
+Hash-based ANN & LSH \cite{indyk1998,gionis1999} & Strong approximation framework and sublinear-search intuition & Memory and tuning overhead; hash buckets are not inherently aligned with temporal eligibility \\
+Tree-based practical ANN & FLANN \cite{muja2014}, cover trees \cite{beygelzimer2006} & Practical flexibility and, in some cases, intrinsic-dimension benefits & Performance depends strongly on data characteristics; no guarantee of subset-aware routing \\
+Quantization-based ANN & Product quantization \cite{jegou2011} & Excellent compression and scalable approximate distance evaluation & Improves storage and global search cost more than subset selectivity itself \\
+Graph-based ANN & NSG \cite{fu2019}, HNSW \cite{malkov2020} & Excellent empirical recall-latency tradeoffs and strong navigation behavior & Global graph neighbors may still produce many temporally invalid candidates \\
+Hardware-aware ANN systems & GPU similarity search \cite{johnson2021}, efficient DCOs \cite{gao2023} & Improves throughput at very large scale and reduces candidate evaluation cost & Optimizes execution efficiency, but does not by itself solve routing under subset constraints \\
+\bottomrule
+\end{tabular}
+\end{table*}
 
 \section{Problem Formulation and Research Questions}
 
