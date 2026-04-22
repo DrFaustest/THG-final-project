@@ -20,12 +20,18 @@ class GlobalAnnThenFilterIndex(BaseTemporalSubsetIndex):
         self.index: HnswVectorIndex | None = None
         self.dim: int | None = None
         self.rebuild_count = 0
+        self.compaction_count = 0
+        self.deleted_record_count = 0
+        self.expired_record_count = 0
 
     def build(self, records: list[Record]) -> None:
         self.records = []
         self.id_to_record = {}
         self.active_ids = set()
         self.rebuild_count = 0
+        self.compaction_count = 0
+        self.deleted_record_count = 0
+        self.expired_record_count = 0
         for record in records:
             if record.id in self.id_to_record:
                 raise ValueError(f"Duplicate record id {record.id}")
@@ -45,8 +51,10 @@ class GlobalAnnThenFilterIndex(BaseTemporalSubsetIndex):
     def delete(self, record_id: int) -> None:
         if record_id not in self.id_to_record:
             raise KeyError(record_id)
-        self.active_ids.discard(record_id)
-        self._maybe_rebuild_for_tombstones()
+        if record_id in self.active_ids:
+            self.active_ids.remove(record_id)
+            self.deleted_record_count += 1
+            self._maybe_rebuild_for_tombstones()
 
     def expire(self, before_time: int) -> int:
         expired = [
@@ -56,11 +64,17 @@ class GlobalAnnThenFilterIndex(BaseTemporalSubsetIndex):
         ]
         for record_id in expired:
             self.active_ids.remove(record_id)
+        self.expired_record_count += len(expired)
         self._maybe_rebuild_for_tombstones()
         return len(expired)
 
-    def _rebuild_vector_index(self) -> None:
+    def _rebuild_vector_index(self, *, compact: bool = False) -> None:
         active_records = [record for record in self.records if record.id in self.active_ids]
+        if compact:
+            removed = len(self.records) - len(active_records)
+            if removed > 0:
+                self.records = active_records
+                self.compaction_count += 1
         if not active_records:
             self.index = None
             self.dim = None
@@ -82,7 +96,7 @@ class GlobalAnnThenFilterIndex(BaseTemporalSubsetIndex):
             return
         tombstone_ratio = 1.0 - (len(self.active_ids) / len(self.records))
         if tombstone_ratio > self.config.global_rebuild_tombstone_ratio:
-            self._rebuild_vector_index()
+            self._rebuild_vector_index(compact=True)
 
     def search(self, query: Query) -> SearchResult:
         validate_query(query)
@@ -155,5 +169,9 @@ class GlobalAnnThenFilterIndex(BaseTemporalSubsetIndex):
             "active_records": len(self.active_ids),
             "tombstoned_records": len(self.records) - len(self.active_ids),
             "rebuild_count": self.rebuild_count,
+            "compaction_count": self.compaction_count,
+            "deleted_record_count": self.deleted_record_count,
+            "expired_record_count": self.expired_record_count,
+            "index_visible_size": self.index.size if self.index is not None else 0,
             "hnsw_available": bool(self.index and self.index.available),
         }

@@ -39,6 +39,9 @@ FIELDNAMES = [
     "tombstone_ratio",
     "rebuild_count",
     "cell_rebuild_count",
+    "compaction_count",
+    "deleted_record_count",
+    "expired_record_count",
     "open_ended_fraction",
     "index_visible_size",
 ]
@@ -128,6 +131,9 @@ def run_experiment(
                         "tombstone_ratio": stats["tombstone_ratio"],
                         "rebuild_count": stats["rebuild_count"],
                         "cell_rebuild_count": stats["cell_rebuild_count"],
+                        "compaction_count": stats["compaction_count"],
+                        "deleted_record_count": stats["deleted_record_count"],
+                        "expired_record_count": stats["expired_record_count"],
                         "open_ended_fraction": stats["open_ended_fraction"],
                         "index_visible_size": result.metadata.get("index_visible_size", ""),
                     }
@@ -147,6 +153,9 @@ def _maintenance_stats(stats: Mapping) -> dict[str, float]:
             "tombstone_ratio": tombstoned / max(1.0, active + tombstoned),
             "rebuild_count": float(global_stats.get("rebuild_count", 0)),
             "cell_rebuild_count": float(partitioned.get("cell_rebuild_count", 0)),
+            "compaction_count": float(global_stats.get("compaction_count", 0)) + float(partitioned.get("compaction_count", 0)),
+            "deleted_record_count": float(partitioned.get("deleted_record_count", 0)),
+            "expired_record_count": float(partitioned.get("expired_record_count", 0)),
             "open_ended_fraction": open_ended / max(1.0, active),
         }
     active = float(stats.get("active_records", stats.get("records", 0)))
@@ -158,6 +167,9 @@ def _maintenance_stats(stats: Mapping) -> dict[str, float]:
         "tombstone_ratio": tombstoned / max(1.0, active + tombstoned),
         "rebuild_count": float(stats.get("rebuild_count", 0)),
         "cell_rebuild_count": float(stats.get("cell_rebuild_count", 0)),
+        "compaction_count": float(stats.get("compaction_count", 0)),
+        "deleted_record_count": float(stats.get("deleted_record_count", 0)),
+        "expired_record_count": float(stats.get("expired_record_count", 0)),
         "open_ended_fraction": open_ended / max(1.0, active),
     }
 

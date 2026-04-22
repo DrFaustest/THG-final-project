@@ -22,6 +22,7 @@ class PartitionCell:
     records: list[Record] = field(default_factory=list)
     index: HnswVectorIndex | None = None
     rebuild_count: int = 0
+    compaction_count: int = 0
     active_record_count: int = 0
     min_valid_from: int | None = None
     max_valid_from: int | None = None
@@ -90,8 +91,21 @@ class PartitionCell:
         self.max_price = record.price if self.max_price is None else max(self.max_price, record.price)
         self.category_counts[record.category] += 1
 
-    def build_index(self, config: IndexConfig, active_ids: set[int]) -> None:
+    def compact(self, active_ids: set[int]) -> int:
         active_records = self.active_records(active_ids)
+        removed = len(self.records) - len(active_records)
+        if removed > 0:
+            self.records = active_records
+            self.compaction_count += 1
+        self.refresh_metadata(active_ids)
+        return removed
+
+    def build_index(self, config: IndexConfig, active_ids: set[int], *, compact: bool = False) -> None:
+        if compact:
+            active_records = self.active_records(active_ids)
+            self.compact(active_ids)
+        else:
+            active_records = self.active_records(active_ids)
         if not active_records or len(active_records) < config.partition_exact_threshold:
             self.index = None
             self.rebuild_count += 1
@@ -121,12 +135,16 @@ class PartitionFirstAnnIndex(BaseTemporalSubsetIndex):
         self.records: list[Record] = []
         self.id_to_record: dict[int, Record] = {}
         self.active_ids: set[int] = set()
+        self.deleted_record_count = 0
+        self.expired_record_count = 0
 
     def build(self, records: list[Record]) -> None:
         self.cells = {}
         self.records = []
         self.id_to_record = {}
         self.active_ids = set()
+        self.deleted_record_count = 0
+        self.expired_record_count = 0
         for record in records:
             self._add_to_cell(record)
         for cell in self.cells.values():
@@ -141,6 +159,7 @@ class PartitionFirstAnnIndex(BaseTemporalSubsetIndex):
             raise KeyError(record_id)
         if record_id in self.active_ids:
             self.active_ids.remove(record_id)
+            self.deleted_record_count += 1
             key = self.router.key_for_record(self.id_to_record[record_id])
             self.cells[key].refresh_metadata(self.active_ids)
             self._maybe_rebuild_cell(key)
@@ -155,6 +174,7 @@ class PartitionFirstAnnIndex(BaseTemporalSubsetIndex):
         for record_id in expired:
             self.active_ids.remove(record_id)
             self.cells[self.router.key_for_record(self.id_to_record[record_id])].refresh_metadata(self.active_ids)
+        self.expired_record_count += len(expired)
         for key in affected_keys:
             self._maybe_rebuild_cell(key)
         return len(expired)
@@ -175,7 +195,7 @@ class PartitionFirstAnnIndex(BaseTemporalSubsetIndex):
             return
         inactive_ratio = cell.inactive_count(self.active_ids) / len(cell.records)
         if inactive_ratio > self.config.partition_rebuild_tombstone_ratio:
-            cell.build_index(self.config, self.active_ids)
+            cell.build_index(self.config, self.active_ids, compact=True)
 
     def estimate_subset(self, query: Query) -> SubsetEstimate:
         keys = self._existing_intersecting_cells(query)
@@ -264,14 +284,19 @@ class PartitionFirstAnnIndex(BaseTemporalSubsetIndex):
         return sorted(expanded)
 
     def stats(self) -> dict:
+        stored_records = sum(len(cell.records) for cell in self.cells.values())
         return {
             "algorithm": "partition_ann",
-            "records": len(self.records),
+            "records": stored_records,
+            "historical_records": len(self.records),
             "active_records": len(self.active_ids),
-            "tombstoned_records": len(self.records) - len(self.active_ids),
+            "tombstoned_records": stored_records - len(self.active_ids),
             "cells": len(self.cells),
             "ann_cells": sum(1 for cell in self.cells.values() if cell.index is not None),
             "cell_rebuild_count": sum(cell.rebuild_count for cell in self.cells.values()),
+            "compaction_count": sum(cell.compaction_count for cell in self.cells.values()),
+            "deleted_record_count": self.deleted_record_count,
+            "expired_record_count": self.expired_record_count,
             "open_ended_records": sum(cell.open_ended_count for cell in self.cells.values()),
             "category_histogram": dict(sum((cell.category_counts for cell in self.cells.values()), Counter())),
         }

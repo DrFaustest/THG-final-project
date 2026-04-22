@@ -12,11 +12,15 @@ class ExactFilteredOracle(BaseTemporalSubsetIndex):
         self.records: list[Record] = []
         self.id_to_record: dict[int, Record] = {}
         self.active_ids: set[int] = set()
+        self.deleted_record_count = 0
+        self.expired_record_count = 0
 
     def build(self, records: list[Record]) -> None:
         self.records = []
         self.id_to_record = {}
         self.active_ids = set()
+        self.deleted_record_count = 0
+        self.expired_record_count = 0
         for record in records:
             self.insert(record)
 
@@ -30,7 +34,9 @@ class ExactFilteredOracle(BaseTemporalSubsetIndex):
     def delete(self, record_id: int) -> None:
         if record_id not in self.id_to_record:
             raise KeyError(record_id)
-        self.active_ids.discard(record_id)
+        if record_id in self.active_ids:
+            self.active_ids.remove(record_id)
+            self.deleted_record_count += 1
 
     def expire(self, before_time: int) -> int:
         expired = [
@@ -40,6 +46,7 @@ class ExactFilteredOracle(BaseTemporalSubsetIndex):
         ]
         for record_id in expired:
             self.active_ids.remove(record_id)
+        self.expired_record_count += len(expired)
         return len(expired)
 
     def search(self, query: Query) -> SearchResult:
@@ -72,4 +79,7 @@ class ExactFilteredOracle(BaseTemporalSubsetIndex):
             "records": len(self.records),
             "active_records": len(self.active_ids),
             "tombstoned_records": len(self.records) - len(self.active_ids),
+            "deleted_record_count": self.deleted_record_count,
+            "expired_record_count": self.expired_record_count,
+            "compaction_count": 0,
         }

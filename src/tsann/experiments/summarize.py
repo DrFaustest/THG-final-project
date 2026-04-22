@@ -1,4 +1,5 @@
 from pathlib import Path
+import json
 
 
 def main() -> None:
@@ -11,6 +12,8 @@ def main() -> None:
     output = Path("results/reports/summary.csv")
     output.parent.mkdir(parents=True, exist_ok=True)
     _write_summary(output, summary)
+    json_output = Path("results/reports/summary.json")
+    json_output.write_text(json.dumps(summary, indent=2, sort_keys=True), encoding="utf-8")
     for group, row in summary.items():
         print(
             group,
@@ -22,6 +25,7 @@ def main() -> None:
             f"est_err={row['mean_subset_estimate_error']:.3f}",
         )
     print(f"Wrote {output}")
+    print(f"Wrote {json_output}")
 
 
 def _summarize(path: Path) -> dict[str, dict[str, float | str]]:
@@ -43,6 +47,9 @@ def _summarize(path: Path) -> dict[str, dict[str, float | str]]:
                     "tombstoned_records": [],
                     "rebuild_count": [],
                     "cell_rebuild_count": [],
+                    "compaction_count": [],
+                    "deleted_record_count": [],
+                    "expired_record_count": [],
                     "planner_mode": [],
                 },
             )
@@ -54,6 +61,9 @@ def _summarize(path: Path) -> dict[str, dict[str, float | str]]:
             _append_float(group, "tombstoned_records", row)
             _append_float(group, "rebuild_count", row)
             _append_float(group, "cell_rebuild_count", row)
+            _append_float(group, "compaction_count", row)
+            _append_float(group, "deleted_record_count", row)
+            _append_float(group, "expired_record_count", row)
             if row.get("planner_mode"):
                 group["planner_mode"].append(row["planner_mode"])
 
@@ -69,6 +79,9 @@ def _summarize(path: Path) -> dict[str, dict[str, float | str]]:
             "mean_tombstoned_records": _mean(values["tombstoned_records"]),
             "max_rebuild_count": max(values["rebuild_count"], default=0.0),
             "max_cell_rebuild_count": max(values["cell_rebuild_count"], default=0.0),
+            "max_compaction_count": max(values["compaction_count"], default=0.0),
+            "max_deleted_record_count": max(values["deleted_record_count"], default=0.0),
+            "max_expired_record_count": max(values["expired_record_count"], default=0.0),
             "planner_mode_counts": _mode_counts(values["planner_mode"]),
         }
         for group_name, values in groups.items()
@@ -90,6 +103,9 @@ def _write_summary(path: Path, summary: dict[str, dict[str, float]]) -> None:
         "mean_tombstoned_records",
         "max_rebuild_count",
         "max_cell_rebuild_count",
+        "max_compaction_count",
+        "max_deleted_record_count",
+        "max_expired_record_count",
         "planner_mode_counts",
     ]
     with path.open("w", newline="", encoding="utf-8") as handle:

@@ -9,6 +9,14 @@ Current scope:
 - optional categorical filter
 - exact, global post-filter, partition-first, and rule-based hybrid planning
 - logical delete/expiration with threshold-triggered index rebuilds
+- interval-aware cell pruning from maintained temporal and scalar metadata
+
+Not yet supported:
+
+- learned planner selection
+- generalized multi-scalar heterogeneous routing
+- dual interval indexes over both `valid_from` and `valid_to`
+- production-grade incremental HNSW maintenance
 
 Implemented algorithms:
 
@@ -44,6 +52,6 @@ python -m pip install -e ".[hnsw]"
 
 ## Output
 
-Experiment CSV files are written under `results/csv/`. Each row is per query and includes latency, recall, exact subset size, subset estimate error, chosen planner mode, candidate counts, partitions touched, tombstone counts, rebuild counts, and expansion rounds.
+Experiment CSV files are written under `results/csv/`. Each row is per query and includes latency, recall, exact subset size, subset estimate error, chosen planner mode, candidate counts, partitions touched, tombstone counts, deleted/expired counts, compaction counts, rebuild counts, and expansion rounds. Run-level CSV and JSON summaries are written under `results/reports/`.
 
 `run_grid` includes small smoke workloads for static, append/delete, short-lived expiration, long-lived expiration, and mostly open-ended intervals. It is intentionally small enough for development runs; scale the matrix before using it for paper claims.
