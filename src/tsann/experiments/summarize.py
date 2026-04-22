@@ -47,6 +47,8 @@ def _summarize(path: Path) -> dict[str, dict[str, float | str]]:
                     "tombstoned_records": [],
                     "rebuild_count": [],
                     "cell_rebuild_count": [],
+                    "maintenance_rebuild_count": [],
+                    "maintenance_cell_rebuild_count": [],
                     "compaction_count": [],
                     "deleted_record_count": [],
                     "expired_record_count": [],
@@ -61,6 +63,8 @@ def _summarize(path: Path) -> dict[str, dict[str, float | str]]:
             _append_float(group, "tombstoned_records", row)
             _append_float(group, "rebuild_count", row)
             _append_float(group, "cell_rebuild_count", row)
+            _append_float(group, "maintenance_rebuild_count", row)
+            _append_float(group, "maintenance_cell_rebuild_count", row)
             _append_float(group, "compaction_count", row)
             _append_float(group, "deleted_record_count", row)
             _append_float(group, "expired_record_count", row)
@@ -79,6 +83,8 @@ def _summarize(path: Path) -> dict[str, dict[str, float | str]]:
             "mean_tombstoned_records": _mean(values["tombstoned_records"]),
             "max_rebuild_count": max(values["rebuild_count"], default=0.0),
             "max_cell_rebuild_count": max(values["cell_rebuild_count"], default=0.0),
+            "max_maintenance_rebuild_count": max(values["maintenance_rebuild_count"], default=0.0),
+            "max_maintenance_cell_rebuild_count": max(values["maintenance_cell_rebuild_count"], default=0.0),
             "max_compaction_count": max(values["compaction_count"], default=0.0),
             "max_deleted_record_count": max(values["deleted_record_count"], default=0.0),
             "max_expired_record_count": max(values["expired_record_count"], default=0.0),
@@ -103,6 +109,8 @@ def _write_summary(path: Path, summary: dict[str, dict[str, float]]) -> None:
         "mean_tombstoned_records",
         "max_rebuild_count",
         "max_cell_rebuild_count",
+        "max_maintenance_rebuild_count",
+        "max_maintenance_cell_rebuild_count",
         "max_compaction_count",
         "max_deleted_record_count",
         "max_expired_record_count",

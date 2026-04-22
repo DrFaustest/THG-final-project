@@ -123,8 +123,12 @@ def _plot_maintenance(rows: list[dict[str, str]], output: Path) -> None:
     workloads = _workloads(rows)
     hybrid_rows = [row for row in rows if row["algorithm"] == "hybrid"]
     metrics = {
-        "rebuild_count": [_max_for_workload(hybrid_rows, workload, "rebuild_count") for workload in workloads],
-        "cell_rebuild_count": [_max_for_workload(hybrid_rows, workload, "cell_rebuild_count") for workload in workloads],
+        "maintenance_rebuild_count": [
+            _max_for_workload(hybrid_rows, workload, "maintenance_rebuild_count") for workload in workloads
+        ],
+        "maintenance_cell_rebuild_count": [
+            _max_for_workload(hybrid_rows, workload, "maintenance_cell_rebuild_count") for workload in workloads
+        ],
         "compaction_count": [_max_for_workload(hybrid_rows, workload, "compaction_count") for workload in workloads],
     }
     fig, axis = plt.subplots(figsize=(max(10, len(workloads) * 0.8), 5))

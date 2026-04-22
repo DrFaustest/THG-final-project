@@ -22,16 +22,24 @@ class PartitionCell:
     records: list[Record] = field(default_factory=list)
     index: HnswVectorIndex | None = None
     rebuild_count: int = 0
+    maintenance_rebuild_count: int = 0
     compaction_count: int = 0
     active_record_count: int = 0
     min_valid_from: int | None = None
     max_valid_from: int | None = None
+    min_open_valid_from: int | None = None
+    max_open_valid_from: int | None = None
+    min_closed_valid_from: int | None = None
+    max_closed_valid_from: int | None = None
     min_valid_to: int | None = None
     max_valid_to: int | None = None
     open_ended_count: int = 0
     min_price: float | None = None
     max_price: float | None = None
     category_counts: Counter[int | None] = field(default_factory=Counter)
+    open_valid_from_counts: Counter[int] = field(default_factory=Counter)
+    closed_valid_from_counts: Counter[int] = field(default_factory=Counter)
+    closed_valid_to_counts: Counter[int] = field(default_factory=Counter)
 
     @property
     def record_count(self) -> int:
@@ -55,12 +63,19 @@ class PartitionCell:
         self.active_record_count = 0
         self.min_valid_from = None
         self.max_valid_from = None
+        self.min_open_valid_from = None
+        self.max_open_valid_from = None
+        self.min_closed_valid_from = None
+        self.max_closed_valid_from = None
         self.min_valid_to = None
         self.max_valid_to = None
         self.open_ended_count = 0
         self.min_price = None
         self.max_price = None
         self.category_counts = Counter()
+        self.open_valid_from_counts = Counter()
+        self.closed_valid_from_counts = Counter()
+        self.closed_valid_to_counts = Counter()
         for record in self.records:
             if record.id in active_ids:
                 self.active_record_count += 1
@@ -84,7 +99,30 @@ class PartitionCell:
         self.max_valid_from = record.valid_from if self.max_valid_from is None else max(self.max_valid_from, record.valid_from)
         if record.valid_to is None:
             self.open_ended_count += 1
+            self.open_valid_from_counts[record.valid_from] += 1
+            self.min_open_valid_from = (
+                record.valid_from
+                if self.min_open_valid_from is None
+                else min(self.min_open_valid_from, record.valid_from)
+            )
+            self.max_open_valid_from = (
+                record.valid_from
+                if self.max_open_valid_from is None
+                else max(self.max_open_valid_from, record.valid_from)
+            )
         else:
+            self.closed_valid_from_counts[record.valid_from] += 1
+            self.closed_valid_to_counts[record.valid_to] += 1
+            self.min_closed_valid_from = (
+                record.valid_from
+                if self.min_closed_valid_from is None
+                else min(self.min_closed_valid_from, record.valid_from)
+            )
+            self.max_closed_valid_from = (
+                record.valid_from
+                if self.max_closed_valid_from is None
+                else max(self.max_closed_valid_from, record.valid_from)
+            )
             self.min_valid_to = record.valid_to if self.min_valid_to is None else min(self.min_valid_to, record.valid_to)
             self.max_valid_to = record.valid_to if self.max_valid_to is None else max(self.max_valid_to, record.valid_to)
         self.min_price = record.price if self.min_price is None else min(self.min_price, record.price)
@@ -100,7 +138,14 @@ class PartitionCell:
         self.refresh_metadata(active_ids)
         return removed
 
-    def build_index(self, config: IndexConfig, active_ids: set[int], *, compact: bool = False) -> None:
+    def build_index(
+        self,
+        config: IndexConfig,
+        active_ids: set[int],
+        *,
+        compact: bool = False,
+        maintenance: bool = False,
+    ) -> None:
         if compact:
             active_records = self.active_records(active_ids)
             self.compact(active_ids)
@@ -109,6 +154,8 @@ class PartitionCell:
         if not active_records or len(active_records) < config.partition_exact_threshold:
             self.index = None
             self.rebuild_count += 1
+            if maintenance:
+                self.maintenance_rebuild_count += 1
             return
         dim = int(active_records[0].vector.shape[0])
         self.index = HnswVectorIndex(
@@ -122,6 +169,8 @@ class PartitionCell:
             np.stack([record.vector.astype(np.float32) for record in active_records]),
         )
         self.rebuild_count += 1
+        if maintenance:
+            self.maintenance_rebuild_count += 1
 
 
 class PartitionFirstAnnIndex(BaseTemporalSubsetIndex):
@@ -195,7 +244,7 @@ class PartitionFirstAnnIndex(BaseTemporalSubsetIndex):
             return
         inactive_ratio = cell.inactive_count(self.active_ids) / len(cell.records)
         if inactive_ratio > self.config.partition_rebuild_tombstone_ratio:
-            cell.build_index(self.config, self.active_ids, compact=True)
+            cell.build_index(self.config, self.active_ids, compact=True, maintenance=True)
 
     def estimate_subset(self, query: Query) -> SubsetEstimate:
         keys = self._existing_intersecting_cells(query)
@@ -207,14 +256,17 @@ class PartitionFirstAnnIndex(BaseTemporalSubsetIndex):
     def _estimate_cell_overlap(self, cell: PartitionCell, query: Query) -> float:
         if not cell.can_intersect(query):
             return 0.0
-        time_fraction = _range_overlap_fraction(
-            cell.min_valid_from,
-            query.t_end if cell.open_ended_count else cell.max_valid_to,
-            query.t_start,
-            query.t_end,
-        )
+        closed_count = sum(cell.closed_valid_from_counts.values())
+        open_estimate = float(_count_leq(cell.open_valid_from_counts, query.t_end))
+        if closed_count == 0:
+            closed_estimate = 0.0
+        else:
+            closed_start_fraction = _count_leq(cell.closed_valid_from_counts, query.t_end) / closed_count
+            closed_end_fraction = _count_geq(cell.closed_valid_to_counts, query.t_start) / closed_count
+            closed_estimate = closed_count * closed_start_fraction * closed_end_fraction
         price_fraction = _range_overlap_fraction(cell.min_price, cell.max_price, query.price_min, query.price_max)
-        return cell.active_record_count * time_fraction * price_fraction
+        interval_estimate = min(float(cell.active_record_count), open_estimate + closed_estimate)
+        return interval_estimate * price_fraction
 
     def search(self, query: Query) -> SearchResult:
         validate_query(query)
@@ -294,6 +346,7 @@ class PartitionFirstAnnIndex(BaseTemporalSubsetIndex):
             "cells": len(self.cells),
             "ann_cells": sum(1 for cell in self.cells.values() if cell.index is not None),
             "cell_rebuild_count": sum(cell.rebuild_count for cell in self.cells.values()),
+            "maintenance_cell_rebuild_count": sum(cell.maintenance_rebuild_count for cell in self.cells.values()),
             "compaction_count": sum(cell.compaction_count for cell in self.cells.values()),
             "deleted_record_count": self.deleted_record_count,
             "expired_record_count": self.expired_record_count,
@@ -319,3 +372,33 @@ def _range_overlap_fraction(
     envelope_width = max(float(envelope_max - envelope_min), 1.0)
     overlap_width = max(float(overlap_max - overlap_min), 1.0)
     return min(1.0, overlap_width / envelope_width)
+
+
+def _cdf_leq(value: int | float, minimum: int | float | None, maximum: int | float | None) -> float:
+    if minimum is None or maximum is None:
+        return 0.0
+    if value < minimum:
+        return 0.0
+    if value >= maximum:
+        return 1.0
+    width = max(float(maximum - minimum), 1.0)
+    return min(1.0, max(0.0, (float(value) - float(minimum)) / width))
+
+
+def _cdf_geq(value: int | float, minimum: int | float | None, maximum: int | float | None) -> float:
+    if minimum is None or maximum is None:
+        return 0.0
+    if value <= minimum:
+        return 1.0
+    if value > maximum:
+        return 0.0
+    width = max(float(maximum - minimum), 1.0)
+    return min(1.0, max(0.0, (float(maximum) - float(value)) / width))
+
+
+def _count_leq(counts: Counter[int], value: int) -> int:
+    return sum(count for key, count in counts.items() if key <= value)
+
+
+def _count_geq(counts: Counter[int], value: int) -> int:
+    return sum(count for key, count in counts.items() if key >= value)

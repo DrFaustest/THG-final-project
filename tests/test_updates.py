@@ -86,6 +86,7 @@ def test_partition_cell_compacts_when_rebuild_threshold_crosses() -> None:
 
     stats = index.stats()
     assert stats["compaction_count"] >= 1
+    assert stats["maintenance_cell_rebuild_count"] >= 1
     assert stats["tombstoned_records"] == 0
     assert stats["active_records"] == 2
 
@@ -104,6 +105,7 @@ def test_global_compacts_when_rebuild_threshold_crosses() -> None:
 
     stats = index.stats()
     assert stats["compaction_count"] >= 1
+    assert stats["maintenance_rebuild_count"] >= 1
     assert stats["records"] == 2
     assert stats["active_records"] == 2
     assert stats["index_visible_size"] == 2

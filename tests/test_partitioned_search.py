@@ -46,3 +46,18 @@ def test_partitioned_routing_prunes_expired_only_cells() -> None:
 
     assert result.ids == [2]
     assert result.metadata["visited_partitions"] == 1
+
+
+def test_interval_estimator_handles_long_lived_and_open_ended_mix() -> None:
+    vector = np.array([0.0, 0.0], dtype=np.float32)
+    records = [
+        *(Record(i, vector + i, valid_from=0, valid_to=100, price=1.0) for i in range(10)),
+        *(Record(100 + i, vector + i, valid_from=0, valid_to=None, price=1.0) for i in range(5)),
+        *(Record(200 + i, vector + i, valid_from=0, valid_to=10, price=1.0) for i in range(7)),
+    ]
+    index = PartitionFirstAnnIndex(IndexConfig(time_bucket_width=10, price_bucket_width=10.0))
+    index.build(records)
+
+    estimate = index.estimate_subset(Query(vector, 10, t_start=50, t_end=60, price_min=0.0, price_max=2.0))
+
+    assert estimate.subset_size == 15
