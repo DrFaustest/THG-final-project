@@ -105,6 +105,12 @@ class RuleBasedPlanner:
         ):
             return "partition_ann"
         if (
+            estimate.num_cells <= self.config.planner_max_cells_for_partition
+            and features.fragmentation_score <= 2.0
+            and estimate.subset_size <= self.config.planner_exact_threshold * 8
+        ):
+            return "partition_ann"
+        if (
             features.category_present
             and estimate.num_cells <= self.config.planner_max_cells_for_partition * 2
             and features.open_ended_fraction < 0.75

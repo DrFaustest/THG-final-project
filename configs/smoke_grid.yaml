@@ -7,7 +7,13 @@ k: 10
 
 index_config:
   partition_exact_threshold: 80
-  planner_exact_threshold: 250
+  planner_exact_threshold: 8
+  planner_max_cells_for_partition: 64
+  planner_min_avg_cell_size: 5
+  global_initial_alpha: 2
+  global_min_budget: 10
+  global_max_budget: 120
+  local_budget_factor: 1
 
 regimes:
   - name: static
