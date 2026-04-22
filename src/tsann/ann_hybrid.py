@@ -8,12 +8,12 @@ from tsann.types import Query, Record, SearchResult
 
 
 class HybridPlannerIndex(BaseTemporalSubsetIndex):
-    def __init__(self, config: IndexConfig | None = None) -> None:
+    def __init__(self, config: IndexConfig | None = None, planner: RuleBasedPlanner | None = None) -> None:
         self.config = config or IndexConfig()
         self.oracle = ExactFilteredOracle()
         self.global_index = GlobalAnnThenFilterIndex(self.config)
         self.partition_index = PartitionFirstAnnIndex(self.config)
-        self.planner = RuleBasedPlanner(self.config)
+        self.planner = planner or RuleBasedPlanner(self.config)
 
     def build(self, records: list[Record]) -> None:
         self.oracle.build(records)
@@ -52,6 +52,7 @@ class HybridPlannerIndex(BaseTemporalSubsetIndex):
         result.metadata = {
             **result.metadata,
             "algorithm": "hybrid",
+            "planner_type": type(self.planner).__name__,
             "planner_mode": mode,
             "subset_size_estimate": estimate.subset_size,
             "estimate_num_cells": estimate.num_cells,

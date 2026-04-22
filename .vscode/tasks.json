@@ -48,6 +48,30 @@
         }
       },
       "problemMatcher": []
+    },
+    {
+      "label": "train planner",
+      "type": "shell",
+      "command": "python -m tsann.experiments.train_planner",
+      "group": "build",
+      "options": {
+        "env": {
+          "PYTHONPATH": "src"
+        }
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "evaluate planner",
+      "type": "shell",
+      "command": "python -m tsann.experiments.evaluate_planner",
+      "group": "build",
+      "options": {
+        "env": {
+          "PYTHONPATH": "src"
+        }
+      },
+      "problemMatcher": []
     }
   ]
 }

@@ -33,6 +33,7 @@ FIELDNAMES = [
     "visited_partitions",
     "ann_expansion_rounds",
     "exact_distance_computations",
+    "planner_type",
     "planner_mode",
     "planner_feature_subset_size",
     "planner_feature_num_cells",
@@ -45,6 +46,9 @@ FIELDNAMES = [
     "planner_feature_tombstone_ratio",
     "planner_feature_open_ended_fraction",
     "planner_feature_fragmentation_score",
+    "best_mode",
+    "best_mode_latency_ms",
+    "best_mode_recall_at_10",
     "active_records",
     "tombstoned_records",
     "tombstone_ratio",
@@ -111,8 +115,11 @@ def run_experiment(
             exact_subset_size = int(truth.metadata.get("candidate_count", len(truth.ids)))
             estimate = algorithms["partition_ann"].estimate_subset(query)
             estimate_error = abs(estimate.subset_size - exact_subset_size) / max(1, exact_subset_size)
+            results = {name: algorithm.search(query) for name, algorithm in algorithms.items()}
+            recalls = {name: recall_at_k(result, truth, 10) for name, result in results.items()}
+            best_mode = _best_mode(results, recalls)
             for name, algorithm in algorithms.items():
-                result = algorithm.search(query)
+                result = results[name]
                 stats = _maintenance_stats(algorithm.stats())
                 writer.writerow(
                     {
@@ -136,6 +143,7 @@ def run_experiment(
                         "visited_partitions": result.metadata.get("visited_partitions", 0),
                         "ann_expansion_rounds": result.metadata.get("ann_expansion_rounds", 0),
                         "exact_distance_computations": result.metadata.get("exact_distance_computations", 0),
+                        "planner_type": result.metadata.get("planner_type", ""),
                         "planner_mode": result.metadata.get("planner_mode", ""),
                         "planner_feature_subset_size": result.metadata.get("planner_feature_subset_size", ""),
                         "planner_feature_num_cells": result.metadata.get("planner_feature_num_cells", ""),
@@ -148,6 +156,9 @@ def run_experiment(
                         "planner_feature_tombstone_ratio": result.metadata.get("planner_feature_tombstone_ratio", ""),
                         "planner_feature_open_ended_fraction": result.metadata.get("planner_feature_open_ended_fraction", ""),
                         "planner_feature_fragmentation_score": result.metadata.get("planner_feature_fragmentation_score", ""),
+                        "best_mode": best_mode,
+                        "best_mode_latency_ms": results[best_mode].metadata.get("latency_ms", 0.0),
+                        "best_mode_recall_at_10": recalls[best_mode],
                         "active_records": stats["active_records"],
                         "tombstoned_records": stats["tombstoned_records"],
                         "tombstone_ratio": stats["tombstone_ratio"],
@@ -160,6 +171,17 @@ def run_experiment(
                         "index_visible_size": result.metadata.get("index_visible_size", ""),
                     }
                 )
+
+
+def _best_mode(results: dict[str, object], recalls: dict[str, float], recall_floor: float = 0.98) -> str:
+    eligible = [
+        (name, float(result.metadata.get("latency_ms", 0.0)))
+        for name, result in results.items()
+        if name != "hybrid" and recalls[name] >= recall_floor
+    ]
+    if not eligible:
+        return max((name for name in recalls if name != "hybrid"), key=lambda name: recalls[name])
+    return min(eligible, key=lambda item: item[1])[0]
 
 
 def _maintenance_stats(stats: Mapping) -> dict[str, float]:

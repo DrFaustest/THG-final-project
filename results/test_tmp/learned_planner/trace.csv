@@ -1,0 +1,5 @@
+algorithm,best_mode,planner_feature_subset_size,planner_feature_num_cells,planner_feature_avg_cell_size,planner_feature_query_window_width,planner_feature_price_range_width,planner_feature_category_present,planner_feature_active_records,planner_feature_tombstoned_records,planner_feature_tombstone_ratio,planner_feature_open_ended_fraction,planner_feature_fragmentation_score
+hybrid,exact,10,1,10.0,10,5.0,0,1000,0,0.0,0.0,0.1
+hybrid,exact,20,2,10.0,10,5.0,0,1000,0,0.0,0.0,0.1
+hybrid,partition_ann,1000,3,333.3333333333333,10,5.0,0,1000,0,0.0,0.0,0.003
+hybrid,partition_ann,1200,4,300.0,10,5.0,0,1000,0,0.0,0.0,0.0033333333333333335

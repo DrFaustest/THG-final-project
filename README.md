@@ -7,13 +7,13 @@ Current scope:
 - interval-valid temporal subset ANN
 - one primary numeric scalar predicate, currently `price`
 - optional categorical filter
-- exact, global post-filter, partition-first, and rule-based hybrid planning
+- exact, global post-filter, partition-first, rule-based hybrid planning, and an initial nearest-centroid learned planner
 - logical delete/expiration with threshold-triggered index rebuilds
 - interval-aware cell pruning from maintained temporal and scalar metadata
 
 Not yet supported:
 
-- learned planner selection
+- robust learned planner selection beyond the initial nearest-centroid prototype
 - generalized multi-scalar heterogeneous routing
 - dual interval indexes over both `valid_from` and `valid_to`
 - production-grade incremental HNSW maintenance
@@ -42,6 +42,8 @@ python -m pytest
 python -m tsann.experiments.run_single
 python -m tsann.experiments.run_grid
 python -m tsann.experiments.summarize
+python -m tsann.experiments.train_planner
+python -m tsann.experiments.evaluate_planner
 ```
 
 For HNSW-backed ANN experiments instead of the brute-force fallback:
@@ -52,6 +54,6 @@ python -m pip install -e ".[hnsw]"
 
 ## Output
 
-Experiment CSV files are written under `results/csv/`. Each row is per query and includes latency, recall, exact subset size, subset estimate error, chosen planner mode, candidate counts, partitions touched, tombstone counts, deleted/expired counts, compaction counts, rebuild counts, and expansion rounds. Run-level CSV and JSON summaries are written under `results/reports/`.
+Experiment CSV files are written under `results/csv/`. Each row is per query and includes latency, recall, exact subset size, subset estimate error, chosen planner mode, candidate counts, partitions touched, tombstone counts, deleted/expired counts, compaction counts, rebuild counts, expansion rounds, and a `best_mode` label for planner training. Run-level CSV and JSON summaries are written under `results/reports/`.
 
 `run_grid` includes small smoke workloads for static, append/delete, short-lived expiration, long-lived expiration, and mostly open-ended intervals. It is intentionally small enough for development runs; scale the matrix before using it for paper claims.
