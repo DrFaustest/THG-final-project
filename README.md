@@ -1,6 +1,14 @@
 # Temporal Subset ANN
 
-Starter research prototype for filtered approximate nearest neighbor search with temporal and scalar predicates.
+Starter research prototype for interval-valid temporal subset approximate nearest neighbor search with one primary scalar predicate and an optional category filter.
+
+Current scope:
+
+- interval-valid temporal subset ANN
+- one primary numeric scalar predicate, currently `price`
+- optional categorical filter
+- exact, global post-filter, partition-first, and rule-based hybrid planning
+- logical delete/expiration with threshold-triggered index rebuilds
 
 Implemented algorithms:
 
@@ -36,4 +44,6 @@ python -m pip install -e ".[hnsw]"
 
 ## Output
 
-Experiment CSV files are written under `results/csv/`. Each row is per query and includes latency, recall, chosen planner mode, candidate counts, partitions touched, and expansion rounds.
+Experiment CSV files are written under `results/csv/`. Each row is per query and includes latency, recall, exact subset size, subset estimate error, chosen planner mode, candidate counts, partitions touched, tombstone counts, rebuild counts, and expansion rounds.
+
+`run_grid` includes small smoke workloads for static, append/delete, short-lived expiration, long-lived expiration, and mostly open-ended intervals. It is intentionally small enough for development runs; scale the matrix before using it for paper claims.

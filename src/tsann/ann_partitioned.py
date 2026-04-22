@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from collections import Counter
 import time
 
 import numpy as np
@@ -29,6 +30,7 @@ class PartitionCell:
     open_ended_count: int = 0
     min_price: float | None = None
     max_price: float | None = None
+    category_counts: Counter[int | None] = field(default_factory=Counter)
 
     @property
     def record_count(self) -> int:
@@ -57,6 +59,7 @@ class PartitionCell:
         self.open_ended_count = 0
         self.min_price = None
         self.max_price = None
+        self.category_counts = Counter()
         for record in self.records:
             if record.id in active_ids:
                 self.active_record_count += 1
@@ -85,6 +88,7 @@ class PartitionCell:
             self.max_valid_to = record.valid_to if self.max_valid_to is None else max(self.max_valid_to, record.valid_to)
         self.min_price = record.price if self.min_price is None else min(self.min_price, record.price)
         self.max_price = record.price if self.max_price is None else max(self.max_price, record.price)
+        self.category_counts[record.category] += 1
 
     def build_index(self, config: IndexConfig, active_ids: set[int]) -> None:
         active_records = self.active_records(active_ids)
@@ -269,6 +273,7 @@ class PartitionFirstAnnIndex(BaseTemporalSubsetIndex):
             "ann_cells": sum(1 for cell in self.cells.values() if cell.index is not None),
             "cell_rebuild_count": sum(cell.rebuild_count for cell in self.cells.values()),
             "open_ended_records": sum(cell.open_ended_count for cell in self.cells.values()),
+            "category_histogram": dict(sum((cell.category_counts for cell in self.cells.values()), Counter())),
         }
 
 

@@ -2,58 +2,108 @@ from pathlib import Path
 
 
 def main() -> None:
-    path = Path("results/csv/run_single.csv")
+    path = Path("results/csv/run_grid.csv")
+    if not path.exists():
+        path = Path("results/csv/run_single.csv")
     if not path.exists():
         raise SystemExit(f"Missing {path}; run python -m tsann.experiments.run_single first")
     summary = _summarize(path)
     output = Path("results/reports/summary.csv")
     output.parent.mkdir(parents=True, exist_ok=True)
     _write_summary(output, summary)
-    for algorithm, row in summary.items():
+    for group, row in summary.items():
         print(
-            algorithm,
+            group,
             f"p50={row['latency_p50_ms']:.3f}ms",
             f"p95={row['latency_p95_ms']:.3f}ms",
+            f"p99={row['latency_p99_ms']:.3f}ms",
             f"recall={row['mean_recall_at_10']:.3f}",
             f"valid={row['mean_valid_rate']:.3f}",
+            f"est_err={row['mean_subset_estimate_error']:.3f}",
         )
     print(f"Wrote {output}")
 
 
-def _summarize(path: Path) -> dict[str, dict[str, float]]:
+def _summarize(path: Path) -> dict[str, dict[str, float | str]]:
     import csv
 
-    groups: dict[str, dict[str, list[float]]] = {}
+    groups: dict[str, dict[str, list[float] | list[str]]] = {}
     with path.open(newline="", encoding="utf-8") as handle:
         for row in csv.DictReader(handle):
+            workload = row.get("workload", "default")
+            algorithm = row["algorithm"]
             group = groups.setdefault(
-                row["algorithm"],
-                {"latency_ms": [], "recall_at_10": [], "valid_result_rate": []},
+                f"{workload}:{algorithm}",
+                {
+                    "latency_ms": [],
+                    "recall_at_10": [],
+                    "valid_result_rate": [],
+                    "subset_estimate_error": [],
+                    "active_records": [],
+                    "tombstoned_records": [],
+                    "rebuild_count": [],
+                    "cell_rebuild_count": [],
+                    "planner_mode": [],
+                },
             )
-            group["latency_ms"].append(float(row["latency_ms"]))
-            group["recall_at_10"].append(float(row["recall_at_10"]))
-            group["valid_result_rate"].append(float(row["valid_result_rate"]))
+            _append_float(group, "latency_ms", row)
+            _append_float(group, "recall_at_10", row)
+            _append_float(group, "valid_result_rate", row)
+            _append_float(group, "subset_estimate_error", row)
+            _append_float(group, "active_records", row)
+            _append_float(group, "tombstoned_records", row)
+            _append_float(group, "rebuild_count", row)
+            _append_float(group, "cell_rebuild_count", row)
+            if row.get("planner_mode"):
+                group["planner_mode"].append(row["planner_mode"])
 
     return {
-        algorithm: {
+        group_name: {
             "latency_p50_ms": _quantile(values["latency_ms"], 0.50),
             "latency_p95_ms": _quantile(values["latency_ms"], 0.95),
+            "latency_p99_ms": _quantile(values["latency_ms"], 0.99),
             "mean_recall_at_10": _mean(values["recall_at_10"]),
             "mean_valid_rate": _mean(values["valid_result_rate"]),
+            "mean_subset_estimate_error": _mean(values["subset_estimate_error"]),
+            "mean_active_records": _mean(values["active_records"]),
+            "mean_tombstoned_records": _mean(values["tombstoned_records"]),
+            "max_rebuild_count": max(values["rebuild_count"], default=0.0),
+            "max_cell_rebuild_count": max(values["cell_rebuild_count"], default=0.0),
+            "planner_mode_counts": _mode_counts(values["planner_mode"]),
         }
-        for algorithm, values in groups.items()
+        for group_name, values in groups.items()
     }
 
 
 def _write_summary(path: Path, summary: dict[str, dict[str, float]]) -> None:
     import csv
 
-    fieldnames = ["algorithm", "latency_p50_ms", "latency_p95_ms", "mean_recall_at_10", "mean_valid_rate"]
+    fieldnames = [
+        "group",
+        "latency_p50_ms",
+        "latency_p95_ms",
+        "latency_p99_ms",
+        "mean_recall_at_10",
+        "mean_valid_rate",
+        "mean_subset_estimate_error",
+        "mean_active_records",
+        "mean_tombstoned_records",
+        "max_rebuild_count",
+        "max_cell_rebuild_count",
+        "planner_mode_counts",
+    ]
     with path.open("w", newline="", encoding="utf-8") as handle:
         writer = csv.DictWriter(handle, fieldnames=fieldnames)
         writer.writeheader()
-        for algorithm, row in summary.items():
-            writer.writerow({"algorithm": algorithm, **row})
+        for group, row in summary.items():
+            writer.writerow({"group": group, **row})
+
+
+def _append_float(group: dict, key: str, row: dict[str, str]) -> None:
+    value = row.get(key, "")
+    if value == "":
+        return
+    group[key].append(float(value))
 
 
 def _mean(values: list[float]) -> float:
@@ -69,6 +119,13 @@ def _quantile(values: list[float], q: float) -> float:
     upper = min(lower + 1, len(ordered) - 1)
     weight = pos - lower
     return ordered[lower] * (1 - weight) + ordered[upper] * weight
+
+
+def _mode_counts(values: list[str]) -> str:
+    counts: dict[str, int] = {}
+    for value in values:
+        counts[value] = counts.get(value, 0) + 1
+    return ";".join(f"{key}:{counts[key]}" for key in sorted(counts))
 
 
 if __name__ == "__main__":
