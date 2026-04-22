@@ -72,6 +72,30 @@
         }
       },
       "problemMatcher": []
+    },
+    {
+      "label": "plot results",
+      "type": "shell",
+      "command": "python -m tsann.experiments.plot_results",
+      "group": "build",
+      "options": {
+        "env": {
+          "PYTHONPATH": "src"
+        }
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "full experiment suite",
+      "type": "shell",
+      "command": "python main.py",
+      "group": "build",
+      "options": {
+        "env": {
+          "PYTHONPATH": "src"
+        }
+      },
+      "problemMatcher": []
     }
   ]
 }

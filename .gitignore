@@ -32,10 +32,6 @@ dist/
 data/raw/
 data/processed/
 data/synthetic/
-results/logs/
-results/csv/
-results/figures/
-results/reports/
 
 # VS Code local state
 .vscode/*.code-workspace

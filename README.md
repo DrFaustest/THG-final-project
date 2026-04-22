@@ -42,8 +42,15 @@ python -m pytest
 python -m tsann.experiments.run_single
 python -m tsann.experiments.run_grid --config configs/smoke_grid.yaml
 python -m tsann.experiments.summarize
+python -m tsann.experiments.plot_results
 python -m tsann.experiments.train_planner
 python -m tsann.experiments.evaluate_planner
+```
+
+Or run the full smoke experiment suite:
+
+```powershell
+python main.py
 ```
 
 For HNSW-backed ANN experiments instead of the brute-force fallback:
@@ -54,7 +61,15 @@ python -m pip install -e ".[hnsw]"
 
 ## Output
 
-Experiment CSV files are written under `results/csv/`. Each row is per query and includes latency, recall, exact subset size, subset estimate error, chosen planner mode, candidate counts, partitions touched, tombstone counts, deleted/expired counts, compaction counts, rebuild counts, expansion rounds, and a `best_mode` label for planner training. Run-level CSV and JSON summaries are written under `results/reports/`.
+Experiment CSV files are written under `results/csv/`. Each row is per query and includes latency, recall, exact subset size, subset estimate error, chosen planner mode, candidate counts, partitions touched, tombstone counts, deleted/expired counts, compaction counts, rebuild counts, expansion rounds, and a `best_mode` label for planner training. Run-level CSV and JSON summaries are written under `results/reports/`. Report figures are written under `results/figures/`.
+
+`plot_results` generates:
+
+- `latency_by_workload.png`
+- `recall_by_workload.png`
+- `subset_estimate_error.png`
+- `planner_mode_counts.png`
+- `maintenance_metrics.png`
 
 `configs/smoke_grid.yaml` includes small workloads for static, append/delete, short-lived expiration, long-lived expiration, and mostly open-ended intervals. It is intentionally small enough for development runs. `configs/research_grid.example.yaml` shows a larger multi-seed, multi-dimension, multi-scale matrix for paper-oriented runs.
 
