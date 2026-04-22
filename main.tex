@@ -1,53 +1,31 @@
-\documentclass[sigconf]{acmart}
 
-% -----------------------------
-% Packages (safe in acmart)
-% -----------------------------
-\usepackage{amsmath}
-\usepackage{booktabs}
-\usepackage{multirow}
+\documentclass[sigconf,nonacm]{acmart}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{booktabs,tabularx,array}
+\usepackage{microtype}
+\usepackage{hyperref}
 \usepackage{graphicx}
-\usepackage{xcolor}
-\usepackage{url}
+\usepackage{amsmath}
 \usepackage{enumitem}
-\usepackage{listings}
+\usepackage{xcolor}
 
-% Optional: charts (template)
-\usepackage{pgfplots}
-\pgfplotsset{compat=1.18}
+\setcopyright{none}
+\settopmatter{printacmref=false}
+\citestyle{acmnumeric}
 
-% -----------------------------
-% Figure placeholder macro (compiles without external image files)
-% -----------------------------
-\newcommand{\placeholderfigure}[3]{
-\begin{figure}[t]
-  \centering
-  \fbox{
-    \parbox[c][2.0in][c]{0.95\linewidth}{
-      \centering
-      \textbf{#1}\\
-      \vspace{0.25em}
-      {\small #2}
-    }
-  }
-  \caption{#3}
-  \label{fig:#1}
-\end{figure}
-}
+\title{Temporal Subset Approximate Nearest-Neighbor Search}
+\subtitle{A Workload-Aware Comparison of Global, Partitioned, and Hybrid Strategies}
 
-% -----------------------------
-% Metadata
-% -----------------------------
-\title{High-Dimensional Nearest-Neighbor Search: Exact Indexing, Approximate Methods, and System-Level Tradeoffs}
-
-\author{Student Name}
+\author{Scott Faust}
 \affiliation{
-  \institution{University of Nebraska at Omaha}
+  \institution{University of Nebraska Omaha}
   \city{Omaha}
   \state{Nebraska}
   \country{USA}
 }
-\email{student@unomaha.edu}
+\email{ScottFaust@UNOmaha.com}
 
 \begin{document}
 
@@ -58,6 +36,8 @@ Building on the literature on k-d trees, R-trees, locality-sensitive hashing, pr
 \end{abstract}
 
 \keywords{approximate nearest neighbor, similarity search, temporal filtering, vector search, indexing structures, high-dimensional data}
+
+\maketitle
 
 \section{Introduction}
 
@@ -182,7 +162,7 @@ The clearest result is that global ANN plus post-filtering is the weakest strate
 
 \begin{figure}[t]
     \centering
-    \includegraphics[width=\linewidth]{temporal_report_figs/figures/recall_by_workload.png}
+    \includegraphics[width=\linewidth]{results/figures/recall_by_workload.png}
     \caption{Mean Recall@10 averaged over 32- and 64-dimensional runs at $n=5000$. Global ANN plus post-filtering degrades substantially under subset constraints, while partition-first ANN remains exact in the tested workloads.}
     \label{fig:recall}
 \end{figure}
@@ -191,7 +171,7 @@ Latency tells a similarly clear story. Partition-first ANN also produces the low
 
 \begin{figure}[t]
     \centering
-    \includegraphics[width=\linewidth]{temporal_report_figs/figures/latency_by_workload.png}
+    \includegraphics[width=\linewidth]{results/figures/latency_by_workload.png}
     \caption{Mean p50 latency averaged over 32- and 64-dimensional runs at $n=5000$. Partition-first ANN is the fastest fixed strategy in the current prototype.}
     \label{fig:latency}
 \end{figure}
@@ -233,7 +213,7 @@ A major improvement over earlier versions of the prototype is that subset estima
 
 \begin{figure}[t]
     \centering
-    \includegraphics[width=\linewidth]{temporal_report_figs/figures/estimator_error.png}
+    \includegraphics[width=\linewidth]{results/figures/estimator_error.png}
     \caption{Mean subset-estimate error by workload. Estimation quality is now relatively stable, which shifts attention to planner quality rather than estimator failure.}
     \label{fig:estimator}
 \end{figure}
@@ -248,7 +228,7 @@ At the same time, the planner is still not choosing the best strategy often enou
 
 \begin{figure}[t]
     \centering
-    \includegraphics[width=\linewidth]{temporal_report_figs/figures/planner_quality.png}
+    \includegraphics[width=\linewidth]{results/figures/planner_quality.png}
     \caption{Hybrid planner quality by workload. Match rate remains modest and latency regret remains substantial, showing that planner selection is still the main unresolved problem.}
     \label{fig:planner}
 \end{figure}
@@ -281,74 +261,7 @@ This report studied temporal subset ANN as an extension of the broader literatur
 
 The strongest empirical finding is that global ANN plus post-filtering is a poor fit for this problem, while partition-first ANN is consistently strong in the current prototype. The hybrid planner improves over the global baseline and demonstrates that adaptive strategy selection is worthwhile, but planner match rate and regret show that the current decision policy is still suboptimal. The final conclusion is therefore both practical and forward-looking: temporal subset ANN is best understood as a routing and workload-selection problem, and the next major research step is learning how to choose among otherwise strong search strategies.
 
-\begin{thebibliography}{99}
-
-\bibitem{andoni2018}
-Alexandr Andoni, Piotr Indyk, and Ilya Razenshteyn.
-\newblock 2018.
-\newblock Approximate Nearest Neighbor Search in High Dimensions.
-\newblock \emph{arXiv:1806.09823}.
-
-\bibitem{bentley1975}
-Jon Louis Bentley.
-\newblock 1975.
-\newblock Multidimensional Binary Search Trees Used for Associative Searching.
-\newblock \emph{Communications of the ACM} 18, 9, 509--517.
-
-\bibitem{beygelzimer2006}
-Alina Beygelzimer, Sham Kakade, and John Langford.
-\newblock 2006.
-\newblock Cover Trees for Nearest Neighbor.
-\newblock In \emph{Proceedings of the 23rd International Conference on Machine Learning}. 97--104.
-
-\bibitem{fu2019}
-Cong Fu, Chao Xiang, Changxu Wang, and Deng Cai.
-\newblock 2019.
-\newblock Fast Approximate Nearest Neighbor Search with the Navigating Spreading-out Graph.
-\newblock \emph{Proceedings of the VLDB Endowment} 12, 5, 461--474.
-
-\bibitem{gionis1999}
-Aristides Gionis, Piotr Indyk, and Rajeev Motwani.
-\newblock 1999.
-\newblock Similarity Search in High Dimensions via Hashing.
-\newblock In \emph{Proceedings of the 25th International Conference on Very Large Data Bases}. 518--529.
-
-\bibitem{guttman1984}
-Antonin Guttman.
-\newblock 1984.
-\newblock R-Trees: A Dynamic Index Structure for Spatial Searching.
-\newblock In \emph{Proceedings of the 1984 ACM SIGMOD International Conference on Management of Data}. 47--57.
-
-\bibitem{indyk1998}
-Piotr Indyk and Rajeev Motwani.
-\newblock 1998.
-\newblock Approximate Nearest Neighbors: Towards Removing the Curse of Dimensionality.
-\newblock In \emph{Proceedings of the 30th Annual ACM Symposium on Theory of Computing}. 604--613.
-
-\bibitem{jegou2011}
-Herv\'e J\'egou, Matthijs Douze, and Cordelia Schmid.
-\newblock 2011.
-\newblock Product Quantization for Nearest Neighbor Search.
-\newblock \emph{IEEE Transactions on Pattern Analysis and Machine Intelligence} 33, 1, 117--128.
-
-\bibitem{johnson2021}
-Jeff Johnson, Matthijs Douze, and Herv\'e J\'egou.
-\newblock 2021.
-\newblock Billion-Scale Similarity Search with GPUs.
-\newblock \emph{IEEE Transactions on Big Data} 7, 3, 535--547.
-
-\bibitem{malkov2020}
-Yu. A. Malkov and D. A. Yashunin.
-\newblock 2020.
-\newblock Efficient and Robust Approximate Nearest Neighbor Search Using Hierarchical Navigable Small World Graphs.
-\newblock \emph{IEEE Transactions on Pattern Analysis and Machine Intelligence} 42, 4, 824--836.
-
-\bibitem{muja2014}
-Marius Muja and David G. Lowe.
-\newblock 2014.
-\newblock Scalable Nearest Neighbor Algorithms for High Dimensional Data.
-\newblock \emph{IEEE Transactions on Pattern Analysis and Machine Intelligence} 36, 11, 2227--2240.
-
-\end{thebibliography}
+\bibliographystyle{ACM-Reference-Format}
+\bibliography{references}
 
 \end{document}

@@ -19,8 +19,10 @@ def main() -> None:
     _plot_latency(rows, args.output_dir / "latency_by_workload.png")
     _plot_recall(rows, args.output_dir / "recall_by_workload.png")
     _plot_estimate_error(rows, args.output_dir / "subset_estimate_error.png")
+    _plot_estimate_error(rows, args.output_dir / "estimator_error.png")
     _plot_planner_modes(rows, args.output_dir / "planner_mode_counts.png")
     _plot_planner_regret(rows, args.output_dir / "planner_regret_by_workload.png")
+    _plot_planner_quality(rows, args.output_dir / "planner_quality.png")
     _plot_maintenance(rows, args.output_dir / "maintenance_metrics.png")
     print(f"Wrote figures to {args.output_dir}")
 
@@ -141,6 +143,34 @@ def _plot_planner_regret(rows: list[dict[str, str]], output: Path) -> None:
     _grouped_bars(axis, workloads, series)
     axis.set_ylabel("relative regret / recall gap")
     axis.set_title("Hybrid planner regret by workload")
+    axis.tick_params(axis="x", labelrotation=35)
+    axis.legend(ncols=3, fontsize=8)
+    fig.tight_layout()
+    fig.savefig(output, dpi=180)
+    plt.close(fig)
+
+
+def _plot_planner_quality(rows: list[dict[str, str]], output: Path) -> None:
+    workloads = _workloads(rows)
+    hybrid_rows = [row for row in rows if row["algorithm"] == "hybrid"]
+    series = {
+        "match_rate": [
+            _mean([_float(row, "planner_matched_best_mode") for row in hybrid_rows if row["workload"] == workload])
+            for workload in workloads
+        ],
+        "mean_latency_regret": [
+            _mean([_float(row, "planner_latency_regret") for row in hybrid_rows if row["workload"] == workload])
+            for workload in workloads
+        ],
+        "mean_recall_gap": [
+            _mean([_float(row, "planner_recall_gap") for row in hybrid_rows if row["workload"] == workload])
+            for workload in workloads
+        ],
+    }
+    fig, axis = plt.subplots(figsize=(max(10, len(workloads) * 0.8), 5))
+    _grouped_bars(axis, workloads, series)
+    axis.set_ylabel("rate / relative regret")
+    axis.set_title("Hybrid planner quality by workload")
     axis.tick_params(axis="x", labelrotation=35)
     axis.legend(ncols=3, fontsize=8)
     fig.tight_layout()

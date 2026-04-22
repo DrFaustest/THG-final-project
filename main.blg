@@ -1,0 +1,68 @@
+This is BibTeX, Version 0.99e
+Capacity: max_strings=200000, hash_size=200000, hash_prime=170003
+The top-level auxiliary file: main.aux
+Reallocating 'name_of_file' (item size: 1) to 21 items.
+The style file: ACM-Reference-Format.bst
+Reallocating 'name_of_file' (item size: 1) to 11 items.
+Reallocating 'singl_function' (item size: 4) to 100 items.
+Reallocating 'singl_function' (item size: 4) to 100 items.
+Reallocating 'wiz_functions' (item size: 4) to 6000 items.
+Database file #1: references.bib
+Reallocating 'singl_function' (item size: 4) to 100 items.
+Reallocating 'wiz_functions' (item size: 4) to 9000 items.
+Reallocating 'glb_str_end' (item size: 4) to 20 items.
+Reallocating 'glb_str_ptr' (item size: 4) to 20 items.
+Reallocating 'global_strs' (item size: 1) to 4000000 items.
+Reallocating 'singl_function' (item size: 4) to 100 items.
+Warning--no number and no volume in andoni2018
+Warning--page numbers missing in both pages and numpages fields in andoni2018
+Warning--empty publisher in beygelzimer2006
+Warning--empty address in beygelzimer2006
+Warning--empty publisher in gionis1999
+Warning--empty address in gionis1999
+Warning--empty publisher in guttman1984
+Warning--empty address in guttman1984
+Warning--empty publisher in indyk1998
+Warning--empty address in indyk1998
+You've used 11 entries,
+            6273 wiz_defined-function locations,
+            1584 strings with 19953 characters,
+and the built_in function-call counts, 13121 in all, are:
+= -- 1821
+> -- 321
+< -- 0
++ -- 104
+- -- 113
+* -- 831
+:= -- 1169
+add.period$ -- 55
+call.type$ -- 11
+change.case$ -- 71
+chr.to.int$ -- 11
+cite$ -- 21
+duplicate$ -- 1201
+empty$ -- 845
+format.name$ -- 149
+if$ -- 3343
+int.to.chr$ -- 2
+int.to.str$ -- 1
+missing$ -- 48
+newline$ -- 123
+num.names$ -- 77
+pop$ -- 467
+preamble$ -- 1
+purify$ -- 159
+quote$ -- 0
+skip$ -- 429
+stack$ -- 0
+substring$ -- 1055
+swap$ -- 126
+text.length$ -- 0
+text.prefix$ -- 0
+top$ -- 0
+type$ -- 232
+warning$ -- 10
+while$ -- 83
+width$ -- 0
+write$ -- 242
+(There were 10 warnings)

@@ -1,0 +1,166 @@
+%%% -*-BibTeX-*-
+%%% Do NOT edit. File created by BibTeX with style
+%%% ACM-Reference-Format-Journals [18-Jan-2012].
+
+\begin{thebibliography}{11}
+
+%%% ====================================================================
+%%% NOTE TO THE USER: you can override these defaults by providing
+%%% customized versions of any of these macros before the \bibliography
+%%% command.  Each of them MUST provide its own final punctuation,
+%%% except for \shownote{} and \showURL{}.  The latter two
+%%% do not use final punctuation, in order to avoid confusing it with
+%%% the Web address.
+%%%
+%%% To suppress output of a particular field, define its macro to expand
+%%% to an empty string, or better, \unskip, like this:
+%%%
+%%% \newcommand{\showURL}[1]{\unskip}   % LaTeX syntax
+%%%
+%%% \def \showURL #1{\unskip}           % plain TeX syntax
+%%%
+%%% ====================================================================
+
+\ifx \showCODEN    \undefined \def \showCODEN     #1{\unskip}     \fi
+\ifx \showISBNx    \undefined \def \showISBNx     #1{\unskip}     \fi
+\ifx \showISBNxiii \undefined \def \showISBNxiii  #1{\unskip}     \fi
+\ifx \showISSN     \undefined \def \showISSN      #1{\unskip}     \fi
+\ifx \showLCCN     \undefined \def \showLCCN      #1{\unskip}     \fi
+\ifx \shownote     \undefined \def \shownote      #1{#1}          \fi
+\ifx \showarticletitle \undefined \def \showarticletitle #1{#1}   \fi
+\ifx \showURL      \undefined \def \showURL       {\relax}        \fi
+% The following commands are used for tagged output and should be
+% invisible to TeX
+\providecommand\bibfield[2]{#2}
+\providecommand\bibinfo[2]{#2}
+\providecommand\natexlab[1]{#1}
+\providecommand\showeprint[2][]{arXiv:#2}
+
+\bibitem[Andoni et~al\mbox{.}(2018)]%
+        {andoni2018}
+\bibfield{author}{\bibinfo{person}{Alexandr Andoni}, \bibinfo{person}{Piotr
+  Indyk}, {and} \bibinfo{person}{Ilya Razenshteyn}.}
+  \bibinfo{year}{2018}\natexlab{}.
+\newblock \showarticletitle{Approximate Nearest Neighbor Search in High
+  Dimensions}.
+\newblock \bibinfo{journal}{\emph{arXiv preprint arXiv:1806.09823}}
+  (\bibinfo{year}{2018}).
+\newblock
+
+
+\bibitem[Bentley(1975)]%
+        {bentley1975}
+\bibfield{author}{\bibinfo{person}{Jon~Louis Bentley}.}
+  \bibinfo{year}{1975}\natexlab{}.
+\newblock \showarticletitle{Multidimensional Binary Search Trees Used for
+  Associative Searching}.
+\newblock \bibinfo{journal}{\emph{Commun. ACM}} \bibinfo{volume}{18},
+  \bibinfo{number}{9} (\bibinfo{year}{1975}), \bibinfo{pages}{509--517}.
+\newblock
+
+
+\bibitem[Beygelzimer et~al\mbox{.}(2006)]%
+        {beygelzimer2006}
+\bibfield{author}{\bibinfo{person}{Alina Beygelzimer}, \bibinfo{person}{Sham
+  Kakade}, {and} \bibinfo{person}{John Langford}.}
+  \bibinfo{year}{2006}\natexlab{}.
+\newblock \showarticletitle{Cover Trees for Nearest Neighbor}. In
+  \bibinfo{booktitle}{\emph{Proceedings of the 23rd International Conference on
+  Machine Learning}}. \bibinfo{pages}{97--104}.
+\newblock
+
+
+\bibitem[Fu et~al\mbox{.}(2019)]%
+        {fu2019}
+\bibfield{author}{\bibinfo{person}{Cong Fu}, \bibinfo{person}{Chao Xiang},
+  \bibinfo{person}{Changxu Wang}, {and} \bibinfo{person}{Deng Cai}.}
+  \bibinfo{year}{2019}\natexlab{}.
+\newblock \showarticletitle{Fast Approximate Nearest Neighbor Search with the
+  Navigating Spreading-out Graph}.
+\newblock \bibinfo{journal}{\emph{Proceedings of the VLDB Endowment}}
+  \bibinfo{volume}{12}, \bibinfo{number}{5} (\bibinfo{year}{2019}),
+  \bibinfo{pages}{461--474}.
+\newblock
+
+
+\bibitem[Gionis et~al\mbox{.}(1999)]%
+        {gionis1999}
+\bibfield{author}{\bibinfo{person}{Aristides Gionis}, \bibinfo{person}{Piotr
+  Indyk}, {and} \bibinfo{person}{Rajeev Motwani}.}
+  \bibinfo{year}{1999}\natexlab{}.
+\newblock \showarticletitle{Similarity Search in High Dimensions via Hashing}.
+  In \bibinfo{booktitle}{\emph{Proceedings of the 25th International Conference
+  on Very Large Data Bases}}. \bibinfo{pages}{518--529}.
+\newblock
+
+
+\bibitem[Guttman(1984)]%
+        {guttman1984}
+\bibfield{author}{\bibinfo{person}{Antonin Guttman}.}
+  \bibinfo{year}{1984}\natexlab{}.
+\newblock \showarticletitle{R-Trees: A Dynamic Index Structure for Spatial
+  Searching}. In \bibinfo{booktitle}{\emph{Proceedings of the 1984 ACM SIGMOD
+  International Conference on Management of Data}}. \bibinfo{pages}{47--57}.
+\newblock
+
+
+\bibitem[Indyk and Motwani(1998)]%
+        {indyk1998}
+\bibfield{author}{\bibinfo{person}{Piotr Indyk} {and} \bibinfo{person}{Rajeev
+  Motwani}.} \bibinfo{year}{1998}\natexlab{}.
+\newblock \showarticletitle{Approximate Nearest Neighbors: Towards Removing the
+  Curse of Dimensionality}. In \bibinfo{booktitle}{\emph{Proceedings of the
+  30th Annual ACM Symposium on Theory of Computing}}.
+  \bibinfo{pages}{604--613}.
+\newblock
+
+
+\bibitem[J{\'e}gou et~al\mbox{.}(2011)]%
+        {jegou2011}
+\bibfield{author}{\bibinfo{person}{Herv{\'e} J{\'e}gou},
+  \bibinfo{person}{Matthijs Douze}, {and} \bibinfo{person}{Cordelia Schmid}.}
+  \bibinfo{year}{2011}\natexlab{}.
+\newblock \showarticletitle{Product Quantization for Nearest Neighbor Search}.
+\newblock \bibinfo{journal}{\emph{IEEE Transactions on Pattern Analysis and
+  Machine Intelligence}} \bibinfo{volume}{33}, \bibinfo{number}{1}
+  (\bibinfo{year}{2011}), \bibinfo{pages}{117--128}.
+\newblock
+
+
+\bibitem[Johnson et~al\mbox{.}(2021)]%
+        {johnson2021}
+\bibfield{author}{\bibinfo{person}{Jeff Johnson}, \bibinfo{person}{Matthijs
+  Douze}, {and} \bibinfo{person}{Herv{\'e} J{\'e}gou}.}
+  \bibinfo{year}{2021}\natexlab{}.
+\newblock \showarticletitle{Billion-Scale Similarity Search with GPUs}.
+\newblock \bibinfo{journal}{\emph{IEEE Transactions on Big Data}}
+  \bibinfo{volume}{7}, \bibinfo{number}{3} (\bibinfo{year}{2021}),
+  \bibinfo{pages}{535--547}.
+\newblock
+
+
+\bibitem[Malkov and Yashunin(2020)]%
+        {malkov2020}
+\bibfield{author}{\bibinfo{person}{Yu.~A. Malkov} {and} \bibinfo{person}{D.~A.
+  Yashunin}.} \bibinfo{year}{2020}\natexlab{}.
+\newblock \showarticletitle{Efficient and Robust Approximate Nearest Neighbor
+  Search Using Hierarchical Navigable Small World Graphs}.
+\newblock \bibinfo{journal}{\emph{IEEE Transactions on Pattern Analysis and
+  Machine Intelligence}} \bibinfo{volume}{42}, \bibinfo{number}{4}
+  (\bibinfo{year}{2020}), \bibinfo{pages}{824--836}.
+\newblock
+
+
+\bibitem[Muja and Lowe(2014)]%
+        {muja2014}
+\bibfield{author}{\bibinfo{person}{Marius Muja} {and} \bibinfo{person}{David~G.
+  Lowe}.} \bibinfo{year}{2014}\natexlab{}.
+\newblock \showarticletitle{Scalable Nearest Neighbor Algorithms for High
+  Dimensional Data}.
+\newblock \bibinfo{journal}{\emph{IEEE Transactions on Pattern Analysis and
+  Machine Intelligence}} \bibinfo{volume}{36}, \bibinfo{number}{11}
+  (\bibinfo{year}{2014}), \bibinfo{pages}{2227--2240}.
+\newblock
+
+
+\end{thebibliography}
