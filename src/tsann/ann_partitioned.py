@@ -20,12 +20,29 @@ class PartitionCell:
     key: CellKey
     records: list[Record] = field(default_factory=list)
     index: HnswVectorIndex | None = None
+    rebuild_count: int = 0
+    active_record_count: int = 0
 
-    def build_index(self, config: IndexConfig) -> None:
-        if not self.records or len(self.records) < config.partition_exact_threshold:
+    @property
+    def record_count(self) -> int:
+        return len(self.records)
+
+    def active_records(self, active_ids: set[int]) -> list[Record]:
+        return [record for record in self.records if record.id in active_ids]
+
+    def active_count(self, active_ids: set[int]) -> int:
+        return self.active_record_count
+
+    def inactive_count(self, active_ids: set[int]) -> int:
+        return len(self.records) - self.active_record_count
+
+    def build_index(self, config: IndexConfig, active_ids: set[int]) -> None:
+        active_records = self.active_records(active_ids)
+        if not active_records or len(active_records) < config.partition_exact_threshold:
             self.index = None
+            self.rebuild_count += 1
             return
-        dim = int(self.records[0].vector.shape[0])
+        dim = int(active_records[0].vector.shape[0])
         self.index = HnswVectorIndex(
             dim,
             ef_construction=config.hnsw_ef_construction,
@@ -33,9 +50,10 @@ class PartitionCell:
             ef_search=config.hnsw_ef_search,
         )
         self.index.build(
-            [record.id for record in self.records],
-            np.stack([record.vector.astype(np.float32) for record in self.records]),
+            [record.id for record in active_records],
+            np.stack([record.vector.astype(np.float32) for record in active_records]),
         )
+        self.rebuild_count += 1
 
 
 class PartitionFirstAnnIndex(BaseTemporalSubsetIndex):
@@ -48,34 +66,83 @@ class PartitionFirstAnnIndex(BaseTemporalSubsetIndex):
         self.cells: dict[CellKey, PartitionCell] = {}
         self.records: list[Record] = []
         self.id_to_record: dict[int, Record] = {}
+        self.active_ids: set[int] = set()
 
     def build(self, records: list[Record]) -> None:
         self.cells = {}
         self.records = []
         self.id_to_record = {}
+        self.active_ids = set()
         for record in records:
             self._add_to_cell(record)
         for cell in self.cells.values():
-            cell.build_index(self.config)
+            cell.build_index(self.config, self.active_ids)
 
     def insert(self, record: Record) -> None:
         self._add_to_cell(record)
-        self.cells[self.router.key_for_record(record)].build_index(self.config)
+        self.cells[self.router.key_for_record(record)].build_index(self.config, self.active_ids)
+
+    def delete(self, record_id: int) -> None:
+        if record_id not in self.id_to_record:
+            raise KeyError(record_id)
+        if record_id in self.active_ids:
+            self.active_ids.remove(record_id)
+            key = self.router.key_for_record(self.id_to_record[record_id])
+            self.cells[key].active_record_count -= 1
+            self._maybe_rebuild_cell(key)
+
+    def expire(self, before_time: int) -> int:
+        expired = [
+            record.id
+            for record in self.records
+            if record.id in self.active_ids and record.valid_to is not None and record.valid_to < before_time
+        ]
+        affected_keys = {self.router.key_for_record(self.id_to_record[record_id]) for record_id in expired}
+        for record_id in expired:
+            self.active_ids.remove(record_id)
+            self.cells[self.router.key_for_record(self.id_to_record[record_id])].active_record_count -= 1
+        for key in affected_keys:
+            self._maybe_rebuild_cell(key)
+        return len(expired)
 
     def _add_to_cell(self, record: Record) -> None:
         if record.id in self.id_to_record:
             raise ValueError(f"Duplicate record id {record.id}")
         self.records.append(record)
         self.id_to_record[record.id] = record
+        self.active_ids.add(record.id)
         key = self.router.key_for_record(record)
-        self.cells.setdefault(key, PartitionCell(key)).records.append(record)
+        cell = self.cells.setdefault(key, PartitionCell(key))
+        cell.records.append(record)
+        cell.active_record_count += 1
+
+    def _maybe_rebuild_cell(self, key: CellKey) -> None:
+        cell = self.cells.get(key)
+        if cell is None or not cell.records:
+            return
+        inactive_ratio = cell.inactive_count(self.active_ids) / len(cell.records)
+        if inactive_ratio > self.config.partition_rebuild_tombstone_ratio:
+            cell.build_index(self.config, self.active_ids)
 
     def estimate_subset(self, query: Query) -> SubsetEstimate:
         keys = self._existing_intersecting_cells(query)
-        cell_sizes = [len(self.cells[key].records) for key in keys]
-        subset_size = sum(1 for key in keys for record in self.cells[key].records if passes_filters(record, query))
+        cell_sizes = [self.cells[key].active_count(self.active_ids) for key in keys]
+        subset_size = sum(self._estimate_cell_overlap(self.cells[key], query) for key in keys)
         avg = 0.0 if not cell_sizes else sum(cell_sizes) / len(cell_sizes)
         return SubsetEstimate(subset_size=subset_size, num_cells=len(keys), avg_cell_size=avg)
+
+    def _estimate_cell_overlap(self, cell: PartitionCell, query: Query) -> float:
+        time_fraction = self.router.time_bucketizer.overlap_fraction(
+            cell.key.time_bucket,
+            min(query.t_start, cell.key.time_bucket * self.config.time_bucket_width),
+            query.t_end,
+        )
+        price_fraction = self.router.price_bucketizer.overlap_fraction(
+            cell.key.price_bucket,
+            query.price_min,
+            query.price_max,
+        )
+        return cell.active_record_count * time_fraction * price_fraction
 
     def search(self, query: Query) -> SearchResult:
         validate_query(query)
@@ -90,6 +157,9 @@ class PartitionFirstAnnIndex(BaseTemporalSubsetIndex):
             cell = self.cells[key]
             if cell.index is None:
                 for record in cell.records:
+                    if record.id not in self.active_ids:
+                        filtered_out += 1
+                        continue
                     candidate_count += 1
                     if passes_filters(record, query):
                         items.append((record.id, l2(query.vector, record.vector)))
@@ -103,7 +173,7 @@ class PartitionFirstAnnIndex(BaseTemporalSubsetIndex):
             candidate_count += len(cand_ids)
             for rid in cand_ids:
                 record = self.id_to_record[rid]
-                if passes_filters(record, query):
+                if rid in self.active_ids and passes_filters(record, query):
                     items.append((rid, l2(query.vector, record.vector)))
                     exact_distance_count += 1
                 else:
@@ -126,20 +196,28 @@ class PartitionFirstAnnIndex(BaseTemporalSubsetIndex):
         )
 
     def _existing_intersecting_cells(self, query: Query) -> list[CellKey]:
-        requested = self.router.intersect(query)
-        if query.category is not None:
-            return [key for key in requested if key in self.cells]
+        end_time_bucket = self.router.time_bucketizer.bucket_id(query.t_end)
+        requested_price_buckets = set(self.router.price_bucketizer.buckets_for_range(query.price_min, query.price_max))
         expanded: list[CellKey] = []
-        requested_no_category = {(key.time_bucket, key.price_bucket) for key in requested}
         for key in self.cells:
-            if (key.time_bucket, key.price_bucket) in requested_no_category:
-                expanded.append(key)
+            if key.time_bucket > end_time_bucket:
+                continue
+            if key.price_bucket not in requested_price_buckets:
+                continue
+            if query.category is not None and key.category != query.category:
+                continue
+            if self.cells[key].active_record_count == 0:
+                continue
+            expanded.append(key)
         return sorted(expanded)
 
     def stats(self) -> dict:
         return {
             "algorithm": "partition_ann",
             "records": len(self.records),
+            "active_records": len(self.active_ids),
+            "tombstoned_records": len(self.records) - len(self.active_ids),
             "cells": len(self.cells),
             "ann_cells": sum(1 for cell in self.cells.values() if cell.index is not None),
+            "cell_rebuild_count": sum(cell.rebuild_count for cell in self.cells.values()),
         }

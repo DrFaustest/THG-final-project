@@ -20,6 +20,9 @@ class SyntheticConfig:
     seed: int = 13
     cluster_size_mode: Literal["balanced", "zipf"] = "balanced"
     arrival_mode: Literal["uniform", "bursty", "drifting"] = "uniform"
+    lifetime_min: int | None = None
+    lifetime_max: int | None = None
+    open_ended_fraction: float = 0.0
 
 
 def generate_records(config: SyntheticConfig) -> list[Record]:
@@ -49,7 +52,8 @@ def generate_records(config: SyntheticConfig) -> list[Record]:
         else:
             category = int(rng.integers(0, max(1, min(config.num_clusters, 10))))
 
-        records.append(Record(rid, vector, int(timestamp), price, category))
+        valid_to = _sample_valid_to(rng, int(timestamp), config)
+        records.append(Record(rid, vector, int(timestamp), price, category, valid_to))
     return records
 
 
@@ -65,7 +69,7 @@ def generate_queries(
     if not records:
         return []
     rng = np.random.default_rng(seed)
-    timestamps = np.asarray([record.timestamp for record in records])
+    timestamps = np.asarray([record.valid_from for record in records])
     prices = np.asarray([record.price for record in records])
     min_time, max_time = int(timestamps.min()), int(timestamps.max())
     time_span = max(1, max_time - min_time + 1)
@@ -85,7 +89,7 @@ def generate_queries(
             p_start = float(rng.uniform(price_min_all, price_max_all))
             category = None if i % 2 == 0 else anchor.category
         else:
-            t_start = max(min_time, min(max_time, anchor.timestamp - time_width // 2))
+            t_start = max(min_time, min(max_time, anchor.valid_from - time_width // 2))
             p_start = max(price_min_all, min(price_max_all, anchor.price - price_width / 2))
             category = anchor.category if query_family == "easy" else None
 
@@ -112,3 +116,12 @@ def _sample_timestamps(rng: np.random.Generator, n: int, time_span: int, mode: s
     if mode == "drifting":
         return np.clip(np.floor(rng.beta(2, 1, size=n) * time_span), 0, time_span - 1).astype(int)
     return rng.integers(0, time_span, size=n)
+
+
+def _sample_valid_to(rng: np.random.Generator, valid_from: int, config: SyntheticConfig) -> int | None:
+    if config.lifetime_min is None or config.lifetime_max is None:
+        return valid_from
+    if rng.random() < config.open_ended_fraction:
+        return None
+    lifetime = int(rng.integers(config.lifetime_min, config.lifetime_max + 1))
+    return min(config.time_span - 1, valid_from + lifetime)

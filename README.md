@@ -11,6 +11,13 @@ Implemented algorithms:
 
 The HNSW dependency is optional at runtime. If `hnswlib` is unavailable, the wrapper falls back to brute-force candidate generation so the tests and harness still run.
 
+Records use interval validity:
+
+- `valid_from` is the first logical time where a record is eligible.
+- `valid_to=None` means the record remains active indefinitely.
+- A query window matches a record when the intervals intersect.
+- `delete(record_id)` and `expire(before_time)` logically invalidate records before threshold-triggered index rebuilds.
+
 ## Quick Start
 
 ```powershell
@@ -19,6 +26,12 @@ python -m pytest
 python -m tsann.experiments.run_single
 python -m tsann.experiments.run_grid
 python -m tsann.experiments.summarize
+```
+
+For HNSW-backed ANN experiments instead of the brute-force fallback:
+
+```powershell
+python -m pip install -e ".[hnsw]"
 ```
 
 ## Output

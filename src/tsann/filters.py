@@ -1,9 +1,13 @@
 from tsann.types import Query, Record
 
 
+def interval_intersects(record: Record, query: Query) -> bool:
+    return record.valid_from <= query.t_end and (record.valid_to is None or record.valid_to >= query.t_start)
+
+
 def passes_filters(record: Record, query: Query) -> bool:
     return (
-        query.t_start <= record.timestamp <= query.t_end
+        interval_intersects(record, query)
         and query.price_min <= record.price <= query.price_max
         and (query.category is None or record.category == query.category)
     )

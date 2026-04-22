@@ -25,6 +25,19 @@ class HybridPlannerIndex(BaseTemporalSubsetIndex):
         self.global_index.insert(record)
         self.partition_index.insert(record)
 
+    def delete(self, record_id: int) -> None:
+        self.oracle.delete(record_id)
+        self.global_index.delete(record_id)
+        self.partition_index.delete(record_id)
+
+    def expire(self, before_time: int) -> int:
+        expired = self.oracle.expire(before_time)
+        global_expired = self.global_index.expire(before_time)
+        partition_expired = self.partition_index.expire(before_time)
+        if expired != global_expired or expired != partition_expired:
+            raise RuntimeError("Hybrid backends expired inconsistent record counts")
+        return expired
+
     def search(self, query: Query) -> SearchResult:
         estimate = self.partition_index.estimate_subset(query)
         mode = self.planner.choose_mode(query, estimate)

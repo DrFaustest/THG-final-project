@@ -13,6 +13,14 @@ class BaseTemporalSubsetIndex(ABC):
         raise NotImplementedError
 
     @abstractmethod
+    def delete(self, record_id: int) -> None:
+        raise NotImplementedError
+
+    @abstractmethod
+    def expire(self, before_time: int) -> int:
+        raise NotImplementedError
+
+    @abstractmethod
     def search(self, query: Query) -> SearchResult:
         raise NotImplementedError
 

@@ -5,10 +5,6 @@ description = "Research prototype for temporal subset filtered approximate neare
 requires-python = ">=3.11"
 dependencies = [
   "numpy",
-  "pandas",
-  "pytest",
-  "hypothesis",
-  "hnswlib",
   "matplotlib",
   "pyyaml",
   "tqdm"
@@ -16,6 +12,9 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest", "hypothesis"]
+hnsw = ["hnswlib"]
+analysis = ["pandas"]
+all = ["pytest", "hypothesis", "hnswlib", "pandas"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

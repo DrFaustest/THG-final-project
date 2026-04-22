@@ -17,3 +17,5 @@ class IndexConfig:
     planner_exact_threshold: int = 5_000
     planner_max_cells_for_partition: int = 8
     planner_min_avg_cell_size: int = 2_000
+    global_rebuild_tombstone_ratio: float = 0.15
+    partition_rebuild_tombstone_ratio: float = 0.20

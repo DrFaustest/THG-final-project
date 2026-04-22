@@ -27,7 +27,7 @@ class TimePriceRouter:
     def key_for_record(self, record: Record) -> CellKey:
         category = record.category if self.include_category else None
         return CellKey(
-            self.time_bucketizer.bucket_id(record.timestamp),
+            self.time_bucketizer.bucket_id(record.valid_from),
             self.price_bucketizer.bucket_id(record.price),
             category,
         )

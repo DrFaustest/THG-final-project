@@ -8,9 +8,18 @@ import numpy as np
 class Record:
     id: int
     vector: np.ndarray
-    timestamp: int
+    valid_from: int
     price: float
     category: Optional[int] = None
+    valid_to: Optional[int] = None
+
+    def __post_init__(self) -> None:
+        if self.valid_to is not None and self.valid_to < self.valid_from:
+            raise ValueError("Record.valid_to must be >= Record.valid_from when set")
+
+    @property
+    def timestamp(self) -> int:
+        return self.valid_from
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, Record):
@@ -18,7 +27,8 @@ class Record:
         return (
             self.id == other.id
             and np.array_equal(self.vector, other.vector)
-            and self.timestamp == other.timestamp
+            and self.valid_from == other.valid_from
+            and self.valid_to == other.valid_to
             and self.price == other.price
             and self.category == other.category
         )
@@ -57,6 +67,7 @@ class SearchResult:
 
 @dataclass(frozen=True)
 class SubsetEstimate:
-    subset_size: int
+    subset_size: float
     num_cells: int
     avg_cell_size: float
+    estimator: str = "metadata"
