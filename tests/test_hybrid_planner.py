@@ -14,6 +14,25 @@ def test_hybrid_uses_exact_for_tiny_subset() -> None:
     result = hybrid.search(query)
     assert result.metadata["planner_mode"] == "exact"
     assert result.metadata["algorithm"] == "hybrid"
+    assert "planner_feature_tombstone_ratio" in result.metadata
+    assert "planner_feature_open_ended_fraction" in result.metadata
+
+
+def test_hybrid_planner_features_reflect_churn() -> None:
+    records = generate_records(
+        SyntheticConfig(n=100, d=8, num_clusters=4, seed=30, lifetime_min=10, lifetime_max=30, open_ended_fraction=0.5)
+    )
+    hybrid = HybridPlannerIndex(IndexConfig(global_rebuild_tombstone_ratio=1.0, partition_rebuild_tombstone_ratio=1.0))
+    hybrid.build(records)
+    for record in records[:20]:
+        hybrid.delete(record.id)
+    query = Query(records[-1].vector, 5, 0, 364, 0.0, 100.0)
+
+    result = hybrid.search(query)
+
+    assert result.metadata["planner_feature_tombstoned_records"] == 20
+    assert result.metadata["planner_feature_tombstone_ratio"] > 0.0
+    assert result.metadata["planner_feature_open_ended_fraction"] > 0.0
 
 
 def test_subset_estimate_does_not_scan_records(monkeypatch) -> None:

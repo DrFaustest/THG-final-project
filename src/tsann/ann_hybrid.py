@@ -40,7 +40,9 @@ class HybridPlannerIndex(BaseTemporalSubsetIndex):
 
     def search(self, query: Query) -> SearchResult:
         estimate = self.partition_index.estimate_subset(query)
-        mode = self.planner.choose_mode(query, estimate)
+        partition_stats = self.partition_index.stats()
+        features = self.planner.features_from(query, estimate, partition_stats)
+        mode = self.planner.choose_mode(query, estimate, features)
         if mode == "exact":
             result = self.oracle.search(query)
         elif mode == "partition_ann":
@@ -54,6 +56,7 @@ class HybridPlannerIndex(BaseTemporalSubsetIndex):
             "subset_size_estimate": estimate.subset_size,
             "estimate_num_cells": estimate.num_cells,
             "estimate_avg_cell_size": estimate.avg_cell_size,
+            **features.to_metadata(),
         }
         return result
 

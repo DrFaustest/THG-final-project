@@ -34,6 +34,17 @@ FIELDNAMES = [
     "ann_expansion_rounds",
     "exact_distance_computations",
     "planner_mode",
+    "planner_feature_subset_size",
+    "planner_feature_num_cells",
+    "planner_feature_avg_cell_size",
+    "planner_feature_query_window_width",
+    "planner_feature_price_range_width",
+    "planner_feature_category_present",
+    "planner_feature_active_records",
+    "planner_feature_tombstoned_records",
+    "planner_feature_tombstone_ratio",
+    "planner_feature_open_ended_fraction",
+    "planner_feature_fragmentation_score",
     "active_records",
     "tombstoned_records",
     "tombstone_ratio",
@@ -68,7 +79,7 @@ def run_experiment(
     append_records: list[Record] | None = None,
     delete_ids: list[int] | None = None,
     expire_before: int | None = None,
-    append: bool = False,
+    append_output: bool = False,
 ) -> None:
     id_to_record = {record.id: record for record in records}
     for record in append_records or []:
@@ -90,8 +101,8 @@ def run_experiment(
         if expire_before is not None:
             algorithm.expire(expire_before)
 
-    write_header = not append or not output.exists()
-    with output.open("a" if append else "w", newline="", encoding="utf-8") as handle:
+    write_header = not append_output or not output.exists()
+    with output.open("a" if append_output else "w", newline="", encoding="utf-8") as handle:
         writer = csv.DictWriter(handle, fieldnames=FIELDNAMES)
         if write_header:
             writer.writeheader()
@@ -126,6 +137,17 @@ def run_experiment(
                         "ann_expansion_rounds": result.metadata.get("ann_expansion_rounds", 0),
                         "exact_distance_computations": result.metadata.get("exact_distance_computations", 0),
                         "planner_mode": result.metadata.get("planner_mode", ""),
+                        "planner_feature_subset_size": result.metadata.get("planner_feature_subset_size", ""),
+                        "planner_feature_num_cells": result.metadata.get("planner_feature_num_cells", ""),
+                        "planner_feature_avg_cell_size": result.metadata.get("planner_feature_avg_cell_size", ""),
+                        "planner_feature_query_window_width": result.metadata.get("planner_feature_query_window_width", ""),
+                        "planner_feature_price_range_width": result.metadata.get("planner_feature_price_range_width", ""),
+                        "planner_feature_category_present": int(result.metadata.get("planner_feature_category_present", False)),
+                        "planner_feature_active_records": result.metadata.get("planner_feature_active_records", ""),
+                        "planner_feature_tombstoned_records": result.metadata.get("planner_feature_tombstoned_records", ""),
+                        "planner_feature_tombstone_ratio": result.metadata.get("planner_feature_tombstone_ratio", ""),
+                        "planner_feature_open_ended_fraction": result.metadata.get("planner_feature_open_ended_fraction", ""),
+                        "planner_feature_fragmentation_score": result.metadata.get("planner_feature_fragmentation_score", ""),
                         "active_records": stats["active_records"],
                         "tombstoned_records": stats["tombstoned_records"],
                         "tombstone_ratio": stats["tombstone_ratio"],
